@@ -1,0 +1,108 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  name      String?
+  role      Role     @default(USER)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  resumes           Resume[]
+  jobRecommendations JobRecommendation[]
+  interviewQuestions InterviewQuestion[]
+  learningRoadmaps   LearningRoadmap[]
+  careerProgress     CareerProgress[]
+}
+
+enum Role {
+  USER
+  ADMIN
+}
+
+model Resume {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  filePath  String
+  fileName  String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  analyses ResumeAnalysis[]
+}
+
+model ResumeAnalysis {
+  id                 String   @id @default(uuid())
+  resumeId           String
+  resume             Resume   @relation(fields: [resumeId], references: [id], onDelete: Cascade)
+  atsScore           Int
+  summary            String
+  strengths          String[]
+  weaknesses         String[]
+  missingSkills      String[]
+  grammarIssues      String[]
+  formattingIssues   String[]
+  keywordAnalysis    Json
+  industryMatchScore Int
+  createdAt          DateTime @default(now())
+}
+
+model JobRecommendation {
+  id              String   @id @default(uuid())
+  userId          String
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title           String
+  company         String
+  location        String
+  salary          String?
+  experience      String?
+  matchPercentage Int
+  missingSkills   String[]
+  whyRecommended  String
+  isSaved         Boolean  @default(false)
+  isApplied       Boolean  @default(false)
+  createdAt       DateTime @default(now())
+}
+
+model InterviewQuestion {
+  id          String   @id @default(uuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  jobRole     String
+  type        String // Technical, HR, Behavioral, Aptitude
+  question    String
+  isCompleted Boolean  @default(false)
+  notes       String?
+  createdAt   DateTime @default(now())
+}
+
+model LearningRoadmap {
+  id            String   @id @default(uuid())
+  userId        String
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  targetRole    String
+  currentSkills String[]
+  missingSkills String[]
+  weeklyGoals   Json // structured roadmap
+  progress      Int      @default(0)
+  createdAt     DateTime @default(now())
+}
+
+model CareerProgress {
+  id                String   @id @default(uuid())
+  userId            String
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  atsScoreTrend     Json // array of scores and dates
+  skillGrowth       Json // array of skills over time
+  applicationsCount Int      @default(0)
+  date              DateTime @default(now())
+}
