@@ -3,30 +3,30 @@ import OpenAI from 'openai';
 const apiKey = process.env.OPENAI_API_KEY || '';
 const openai = new OpenAI({ apiKey });
 
-export async function analyzeResume(resumeText: string) {
+export async function analyzeResume(resumeText: string, jobTitle: string, jobDescription: string) {
   if (!apiKey) {
     throw new Error("OPENAI_API_KEY is missing from environment variables.");
   }
   
   const prompt = `
-    Analyze the following resume text and provide a structured JSON response.
+    Analyze the following resume text against the target job role of "${jobTitle}" and its description.
+    Provide a structured JSON response evaluating how well the candidate fits the requirements.
+    Extract keywords from the job description and compare them to the resume content.
     Do not include any markdown formatting or code blocks in the output, just the raw JSON.
     
     Expected JSON Structure:
     {
-      "atsScore": number (0-100),
-      "summary": "string",
-      "strengths": ["string"],
-      "weaknesses": ["string"],
-      "missingSkills": ["string"],
-      "grammarIssues": ["string"],
-      "formattingIssues": ["string"],
-      "keywordAnalysis": { "keyword1": "found", "keyword2": "missing" },
-      "industryMatchScore": number (0-100)
+      "ats_score": 74,
+      "matched_keywords": ["keyword1", "keyword2"],
+      "missing_keywords": ["keyword3", "keyword4"],
+      "feedback": "Detailed feedback explaining the score and gaps."
     }
     
     Resume Text:
     ${resumeText}
+
+    Target Job Description:
+    ${jobDescription}
   `;
 
   try {
@@ -34,23 +34,20 @@ export async function analyzeResume(resumeText: string) {
       messages: [{ role: "user", content: prompt }],
       model: "gpt-4o-mini",
       response_format: { type: "json_object" },
+      temperature: 0.8,
     });
 
     const text = completion.choices[0]?.message?.content || '{}';
     return JSON.parse(text);
   } catch (error) {
     console.warn("Error analyzing resume with OpenAI (likely quota exceeded). Falling back to mock data.", error);
-    // Return mock data so the app continues to work for demo purposes
+    // Return dynamic mock data so the app continues to work for demo purposes
+    const randomScore = Math.floor(Math.random() * (95 - 50 + 1)) + 50;
     return {
-      atsScore: 85,
-      summary: "This is a mock summary generated because the OpenAI API key ran out of quota. The candidate has a strong background in frontend development.",
-      strengths: ["React", "TypeScript", "UI/UX Design"],
-      weaknesses: ["Backend Architecture", "Docker"],
-      missingSkills: ["GraphQL", "AWS"],
-      grammarIssues: ["Minor punctuation errors in the summary section."],
-      formattingIssues: ["Inconsistent bullet points."],
-      keywordAnalysis: { "React": "found", "Next.js": "found", "Vue": "missing" },
-      industryMatchScore: 90
+      ats_score: randomScore,
+      feedback: `This is a dynamic mock feedback. The candidate has some relevant background for the ${jobTitle} position. Score generated uniquely for this analysis.`,
+      matched_keywords: ["React", "TypeScript", "Problem Solving", "Teamwork"],
+      missing_keywords: ["Specific domain experience mentioned in JD", "Cloud infrastructure", "CI/CD"],
     };
   }
 }

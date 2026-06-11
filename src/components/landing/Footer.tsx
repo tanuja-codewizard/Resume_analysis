@@ -16,45 +16,34 @@ export function Footer() {
             <p className="text-sm text-muted-foreground leading-relaxed mb-6">
               Empowering job seekers with AI-driven tools to land their dream roles faster and smarter.
             </p>
-            <div className="flex gap-4">
-              <Link href="#" className="text-muted-foreground hover:text-primary transition-colors">
-                <MessageCircle className="h-5 w-5" />
-              </Link>
-              <Link href="#" className="text-muted-foreground hover:text-primary transition-colors">
-                <Globe className="h-5 w-5" />
-              </Link>
-              <Link href="#" className="text-muted-foreground hover:text-primary transition-colors">
-                <Mail className="h-5 w-5" />
-              </Link>
-            </div>
           </div>
           
           <div>
             <h4 className="font-semibold mb-4">Product</h4>
             <ul className="space-y-3 text-sm">
-              <li><Link href="#features" className="text-muted-foreground hover:text-foreground transition-colors">Features</Link></li>
-              <li><Link href="#pricing" className="text-muted-foreground hover:text-foreground transition-colors">Pricing</Link></li>
-              <li><Link href="#" className="text-muted-foreground hover:text-foreground transition-colors">Resume Analyzer</Link></li>
-              <li><Link href="#" className="text-muted-foreground hover:text-foreground transition-colors">Mock Interviews</Link></li>
+              <li><Link href="/#features" className="text-muted-foreground hover:text-foreground transition-colors">Features</Link></li>
+              <li><Link href="/#pricing" className="text-muted-foreground hover:text-foreground transition-colors">Pricing</Link></li>
+              <li><Link href="/dashboard/resume" className="text-muted-foreground hover:text-foreground transition-colors">Resume Analyzer</Link></li>
+              <li><Link href="/dashboard" className="text-muted-foreground hover:text-foreground transition-colors">Mock Interviews</Link></li>
             </ul>
           </div>
           
           <div>
             <h4 className="font-semibold mb-4">Resources</h4>
             <ul className="space-y-3 text-sm">
-              <li><Link href="#" className="text-muted-foreground hover:text-foreground transition-colors">Blog</Link></li>
-              <li><Link href="#" className="text-muted-foreground hover:text-foreground transition-colors">Career Guides</Link></li>
-              <li><Link href="#" className="text-muted-foreground hover:text-foreground transition-colors">Interview Questions</Link></li>
-              <li><Link href="#" className="text-muted-foreground hover:text-foreground transition-colors">Help Center</Link></li>
+              <li><Link href="/blog" className="text-muted-foreground hover:text-foreground transition-colors">Blog</Link></li>
+              <li><Link href="/career-guides" className="text-muted-foreground hover:text-foreground transition-colors">Career Guides</Link></li>
+              <li><Link href="/interview-questions" className="text-muted-foreground hover:text-foreground transition-colors">Interview Questions</Link></li>
+              <li><Link href="/help" className="text-muted-foreground hover:text-foreground transition-colors">Help Center</Link></li>
             </ul>
           </div>
           
           <div>
             <h4 className="font-semibold mb-4">Legal</h4>
             <ul className="space-y-3 text-sm">
-              <li><Link href="#" className="text-muted-foreground hover:text-foreground transition-colors">Privacy Policy</Link></li>
-              <li><Link href="#" className="text-muted-foreground hover:text-foreground transition-colors">Terms of Service</Link></li>
-              <li><Link href="#" className="text-muted-foreground hover:text-foreground transition-colors">Cookie Policy</Link></li>
+              <li><Link href="/privacy" className="text-muted-foreground hover:text-foreground transition-colors">Privacy Policy</Link></li>
+              <li><Link href="/terms" className="text-muted-foreground hover:text-foreground transition-colors">Terms of Service</Link></li>
+              <li><Link href="/cookies" className="text-muted-foreground hover:text-foreground transition-colors">Cookie Policy</Link></li>
             </ul>
           </div>
         </div>

@@ -44,6 +44,7 @@ model ResumeAnalysis {
   id                 String   @id @default(uuid())
   resumeId           String
   resume             Resume   @relation(fields: [resumeId], references: [id], onDelete: Cascade)
+  jobTitle           String?
   atsScore           Int
   summary            String
   strengths          String[]

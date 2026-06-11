@@ -16,38 +16,34 @@ export function Footer() {
             <p className="text-muted-foreground text-sm leading-relaxed">
               Elevate your career with AI-powered insights, resume analysis, and personalized roadmaps.
             </p>
-            <div className="flex items-center gap-4 mt-6 text-muted-foreground">
-              <a href="#" className="hover:text-foreground transition-colors"><Globe className="h-5 w-5" /></a>
-              <a href="#" className="hover:text-foreground transition-colors"><Mail className="h-5 w-5" /></a>
-            </div>
           </div>
           
           <div>
             <h3 className="font-semibold mb-4">Product</h3>
             <ul className="space-y-3 text-sm text-muted-foreground">
-              <li><Link href="#" className="hover:text-foreground transition-colors">Resume Analysis</Link></li>
-              <li><Link href="#" className="hover:text-foreground transition-colors">ATS Scoring</Link></li>
-              <li><Link href="#" className="hover:text-foreground transition-colors">Interview Prep</Link></li>
-              <li><Link href="#" className="hover:text-foreground transition-colors">Career Roadmaps</Link></li>
+              <li><Link href="/dashboard/resume" className="hover:text-foreground transition-colors">Resume Analysis</Link></li>
+              <li><Link href="/dashboard/resume" className="hover:text-foreground transition-colors">ATS Scoring</Link></li>
+              <li><Link href="/dashboard" className="hover:text-foreground transition-colors">Interview Prep</Link></li>
+              <li><Link href="/dashboard" className="hover:text-foreground transition-colors">Career Roadmaps</Link></li>
             </ul>
           </div>
           
           <div>
             <h3 className="font-semibold mb-4">Company</h3>
             <ul className="space-y-3 text-sm text-muted-foreground">
-              <li><Link href="#" className="hover:text-foreground transition-colors">About Us</Link></li>
-              <li><Link href="#" className="hover:text-foreground transition-colors">Careers</Link></li>
-              <li><Link href="#" className="hover:text-foreground transition-colors">Blog</Link></li>
-              <li><Link href="#" className="hover:text-foreground transition-colors">Contact</Link></li>
+              <li><Link href="/about" className="hover:text-foreground transition-colors">About Us</Link></li>
+              <li><Link href="/careers" className="hover:text-foreground transition-colors">Careers</Link></li>
+              <li><Link href="/blog" className="hover:text-foreground transition-colors">Blog</Link></li>
+              <li><Link href="/contact" className="hover:text-foreground transition-colors">Contact</Link></li>
             </ul>
           </div>
           
           <div>
             <h3 className="font-semibold mb-4">Legal</h3>
             <ul className="space-y-3 text-sm text-muted-foreground">
-              <li><Link href="#" className="hover:text-foreground transition-colors">Privacy Policy</Link></li>
-              <li><Link href="#" className="hover:text-foreground transition-colors">Terms of Service</Link></li>
-              <li><Link href="#" className="hover:text-foreground transition-colors">Cookie Policy</Link></li>
+              <li><Link href="/privacy" className="hover:text-foreground transition-colors">Privacy Policy</Link></li>
+              <li><Link href="/terms" className="hover:text-foreground transition-colors">Terms of Service</Link></li>
+              <li><Link href="/cookies" className="hover:text-foreground transition-colors">Cookie Policy</Link></li>
             </ul>
           </div>
         </div>

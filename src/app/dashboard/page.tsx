@@ -8,30 +8,43 @@ import { ArrowUpRight, UploadCloud, Target, Briefcase, Sparkles } from "lucide-r
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 
-const stats = [
-  { title: "Jobs Applied", value: "24", change: "+12%", icon: Briefcase },
-  { title: "Interviews Prep", value: "8", change: "+3", icon: Target },
-  { title: "Avg ATS Score", value: "78%", change: "+5%", icon: Sparkles },
+const baseStats = [
+  { title: "Jobs Applied", value: "--", change: "--", icon: Briefcase },
+  { title: "Interviews Prep", value: "--", change: "--", icon: Target },
+  { title: "Avg ATS Score", value: "--", change: "--", icon: Sparkles },
 ];
 
 import { useEffect, useState } from "react";
 import { getUserResumes } from "@/app/actions/resume";
 import { getLearningRoadmaps } from "@/app/actions/roadmap";
 import { getJobRecommendations } from "@/app/actions/jobs";
+import { getDashboardStats } from "@/app/actions/dashboard";
 
 export default function DashboardOverview() {
   const [resumes, setResumes] = useState<any[]>([]);
+  const [dashboardStats, setDashboardStats] = useState<any[]>(baseStats);
+  const [isEmpty, setIsEmpty] = useState(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     async function loadData() {
       try {
-        const [userResumes, roadmaps, jobs] = await Promise.all([
+        const [userResumes, roadmaps, jobs, statsResult] = await Promise.all([
           getUserResumes(),
           getLearningRoadmaps(),
-          getJobRecommendations()
+          getJobRecommendations(),
+          getDashboardStats()
         ]);
         setResumes(userResumes);
+        if (statsResult?.success && statsResult.stats) {
+          // Merge icon styling with backend data
+          const mergedStats = statsResult.stats.map((s: any, i: number) => ({
+            ...s,
+            icon: baseStats[i].icon
+          }));
+          setDashboardStats(mergedStats);
+          setIsEmpty(statsResult.isEmptyState);
+        }
         setLoading(false);
       } catch (error) {
         console.error("Failed to load dashboard data", error);
@@ -43,6 +56,7 @@ export default function DashboardOverview() {
 
   const latestAnalysis = resumes[0]?.analyses?.[0];
   const atsScore = latestAnalysis?.atsScore || 0;
+  const analyzedJobTitle = latestAnalysis?.jobTitle || "General Role";
 
   return (
     <div className="space-y-8">
@@ -51,8 +65,23 @@ export default function DashboardOverview() {
         <p className="text-muted-foreground">Here is your career progress overview.</p>
       </div>
 
+      {isEmpty && !loading && (
+        <Card className="bg-primary/5 border-primary/20 backdrop-blur-md">
+          <CardContent className="flex flex-col items-center justify-center p-8 text-center space-y-4">
+            <div className="bg-primary/10 p-4 rounded-full">
+              <Sparkles className="h-8 w-8 text-primary" />
+            </div>
+            <h3 className="text-xl font-bold">No analyses yet</h3>
+            <p className="text-muted-foreground max-w-md">Upload your resume to get started. We will automatically analyze your strengths, weaknesses, and match you with jobs.</p>
+            <Link href="/dashboard/resume">
+              <Button className="mt-2">Upload Resume</Button>
+            </Link>
+          </CardContent>
+        </Card>
+      )}
+
       <div className="grid gap-4 md:grid-cols-3">
-        {stats.map((stat, i) => (
+        {dashboardStats.map((stat, i) => (
           <motion.div
             key={stat.title}
             initial={{ opacity: 0, y: 20 }}
@@ -82,7 +111,7 @@ export default function DashboardOverview() {
         <Card className="lg:col-span-4 bg-card/50 backdrop-blur-md border-border">
           <CardHeader>
             <CardTitle>Recent Resume Analysis</CardTitle>
-            <CardDescription>Your latest ATS performance</CardDescription>
+            <CardDescription>Targeting: {analyzedJobTitle}</CardDescription>
           </CardHeader>
           <CardContent className="flex flex-col md:flex-row items-center justify-between gap-8 p-6">
             <CircularProgress value={atsScore} size={160} strokeWidth={12} />
@@ -94,7 +123,7 @@ export default function DashboardOverview() {
                 </h4>
                 <p className="text-sm text-muted-foreground">
                   {latestAnalysis 
-                    ? `Your resume "${resumes[0]?.fileName}" scored ${atsScore}%. ${latestAnalysis.summary}`
+                    ? `Your resume "${resumes[0]?.fileName}" scored ${atsScore}% for the ${analyzedJobTitle} role. ${latestAnalysis.summary}`
                     : "Upload your first resume to get a detailed ATS report and personalized recommendations."}
                 </p>
               </div>

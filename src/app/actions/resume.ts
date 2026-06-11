@@ -3,6 +3,11 @@
 import { createClient } from '@/lib/supabase/server';
 import prisma from '@/lib/prisma';
 import { analyzeResume } from '@/lib/ai/openai';
+if (typeof global !== 'undefined' && typeof global.DOMMatrix === 'undefined') {
+  (global as any).DOMMatrix = class DOMMatrix {
+    a = 1; b = 0; c = 0; d = 1; e = 0; f = 0;
+  };
+}
 const { PDFParse } = require('pdf-parse');
 
 export async function uploadAndAnalyzeResume(formData: FormData) {
@@ -23,6 +28,9 @@ export async function uploadAndAnalyzeResume(formData: FormData) {
     }
 
     const file = formData.get('file') as File;
+    const jobTitle = formData.get('jobTitle') as string || 'General Role';
+    const jobDescription = formData.get('jobDescription') as string || 'General Requirements';
+
     if (!file) {
       throw new Error('No file uploaded');
     }
@@ -52,8 +60,7 @@ export async function uploadAndAnalyzeResume(formData: FormData) {
         resumeText = pdfData.text;
         await parser.destroy();
       } catch (err) {
-        console.warn("PDF Parsing failed due to Next.js worker issues. Using raw buffer fallback.", err);
-        // Fallback to basic ASCII extraction or mock text so the app doesn't crash
+        console.warn("PDF Parsing failed. Using raw buffer fallback.", err);
         const rawText = buffer.toString('ascii').replace(/[^\x20-\x7E\n]/g, ' ');
         resumeText = rawText.length > 50 ? rawText : "Dummy resume text for testing since PDF parsing failed.";
       }
@@ -67,7 +74,7 @@ export async function uploadAndAnalyzeResume(formData: FormData) {
     }
 
     // 3. AI Analysis
-    const analysisResult = await analyzeResume(resumeText);
+    const analysisResult = await analyzeResume(resumeText, jobTitle, jobDescription);
 
     // 4. Save to Database
     const resume = await prisma.resume.create({
@@ -77,15 +84,16 @@ export async function uploadAndAnalyzeResume(formData: FormData) {
         filePath: filePath,
         analyses: {
           create: {
-            atsScore: analysisResult.atsScore || 0,
-            summary: analysisResult.summary || '',
-            strengths: analysisResult.strengths || [],
-            weaknesses: analysisResult.weaknesses || [],
-            missingSkills: analysisResult.missingSkills || [],
-            grammarIssues: analysisResult.grammarIssues || [],
-            formattingIssues: analysisResult.formattingIssues || [],
-            keywordAnalysis: analysisResult.keywordAnalysis || {},
-            industryMatchScore: analysisResult.industryMatchScore || 0,
+            jobTitle: jobTitle,
+            atsScore: analysisResult.ats_score || 0,
+            summary: analysisResult.feedback || '',
+            strengths: analysisResult.matched_keywords || [],
+            weaknesses: analysisResult.missing_keywords || [],
+            missingSkills: analysisResult.missing_keywords || [],
+            grammarIssues: [],
+            formattingIssues: [],
+            keywordAnalysis: {},
+            industryMatchScore: analysisResult.ats_score || 0,
           }
         }
       },

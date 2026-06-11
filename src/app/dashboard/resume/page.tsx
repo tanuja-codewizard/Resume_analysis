@@ -42,8 +42,14 @@ export default function ResumeAnalyzer() {
     setIsAnalyzing(true);
     
     try {
+      const form = e.target as HTMLFormElement;
+      const jobTitle = (form.elements.namedItem('jobTitle') as HTMLInputElement)?.value;
+      const jobDescription = (form.elements.namedItem('jobDescription') as HTMLTextAreaElement)?.value;
+      
       const formData = new FormData();
       formData.append('file', file);
+      if (jobTitle) formData.append('jobTitle', jobTitle);
+      if (jobDescription) formData.append('jobDescription', jobDescription);
       
       const result = await uploadAndAnalyzeResume(formData);
       
@@ -119,12 +125,13 @@ export default function ResumeAnalyzer() {
                 <div className="space-y-4">
                   <div className="space-y-2">
                     <Label htmlFor="job-title">Job Title</Label>
-                    <Input id="job-title" placeholder="e.g. Senior Frontend Engineer" required />
+                    <Input id="job-title" name="jobTitle" placeholder="e.g. Senior Frontend Engineer" required />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="job-desc">Job Description</Label>
                     <textarea 
                       id="job-desc" 
+                      name="jobDescription"
                       className="flex min-h-[150px] w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
                       placeholder="Paste the requirements and responsibilities here..."
                       required

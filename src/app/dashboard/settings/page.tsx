@@ -6,8 +6,18 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
+import { useRouter } from "next/navigation";
+import { createClient } from "@/lib/supabase/client";
 
 export default function SettingsPage() {
+  const router = useRouter();
+  const supabase = createClient();
+
+  const handleSignOut = async () => {
+    await supabase.auth.signOut();
+    router.push('/login');
+  };
+
   return (
     <div className="max-w-4xl space-y-8">
       <div>
@@ -51,6 +61,12 @@ export default function SettingsPage() {
               <Label>Notifications</Label>
               <p className="text-sm text-muted-foreground mb-4">Email notifications are currently enabled for resume analyses and job recommendations.</p>
               <Button variant="outline">Manage Notifications</Button>
+            </div>
+            <Separator className="my-4" />
+            <div className="space-y-2">
+              <Label className="text-destructive">Account Actions</Label>
+              <p className="text-sm text-muted-foreground mb-4">Sign out of your account on this device.</p>
+              <Button variant="destructive" onClick={handleSignOut}>Sign Out</Button>
             </div>
           </CardContent>
         </Card>
