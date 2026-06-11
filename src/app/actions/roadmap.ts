@@ -16,7 +16,7 @@ export async function generateLearningRoadmap(targetRole: string) {
 
   // Fetch candidate's latest resume analysis
   const latestResume = await prisma.resume.findFirst({
-    where: { userId: user.id },
+    where: { userId: finalUserId },
     orderBy: { createdAt: 'desc' },
     include: { analyses: true }
   });
