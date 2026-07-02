@@ -7,12 +7,10 @@ export async function getDashboardStats() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   
-  let finalUserId = user?.id;
-  if (!finalUserId) {
-    const dummyUser = await prisma.user.findFirst({ where: { email: 'dummy@example.com' } });
-    if (!dummyUser) return { success: false, error: 'Unauthorized' };
-    finalUserId = dummyUser.id;
+  if (!user?.id) {
+    return { success: false, error: 'Unauthorized' };
   }
+  const finalUserId = user.id;
 
   try {
     const now = new Date();

@@ -7,12 +7,10 @@ import { generateLearningRoadmap as generateAIRoadmap } from '@/lib/ai/openai';
 export async function generateLearningRoadmap(targetRole: string) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
-  let finalUserId = user?.id;
-  if (!finalUserId) {
-    const dummyUser = await prisma.user.findFirst({ where: { email: 'dummy@example.com' } });
-    if (!dummyUser) return [];
-    finalUserId = dummyUser.id;
+  if (!user?.id) {
+    throw new Error("Unauthorized");
   }
+  const finalUserId = user.id;
 
   // Fetch candidate's latest resume analysis
   const latestResume = await prisma.resume.findFirst({

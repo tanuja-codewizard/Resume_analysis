@@ -2,6 +2,8 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useState } from "react";
+import { createClient } from "@/lib/supabase/client";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,9 +13,30 @@ import { Briefcase, ArrowRight, Quote } from "lucide-react";
 export default function LoginPage() {
   const router = useRouter();
 
-  const handleLogin = (e: React.FormEvent) => {
+  const [errorMsg, setErrorMsg] = useState("");
+  const [loading, setLoading] = useState(false);
+  const supabase = createClient();
+
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    router.push("/dashboard");
+    setLoading(true);
+    setErrorMsg("");
+    
+    const formData = new FormData(e.target as HTMLFormElement);
+    const email = formData.get("email") as string;
+    const password = formData.get("password") as string;
+    
+    const { error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
+    
+    if (error) {
+      setErrorMsg(error.message);
+      setLoading(false);
+    } else {
+      router.push("/dashboard");
+    }
   };
 
   return (
@@ -40,9 +63,15 @@ export default function LoginPage() {
           </div>
           
           <form className="space-y-4" onSubmit={handleLogin}>
+            {errorMsg && (
+              <div className="p-3 text-sm text-destructive bg-destructive/10 border border-destructive/20 rounded-md">
+                {errorMsg}
+              </div>
+            )}
+            
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
-              <Input id="email" type="email" placeholder="name@example.com" required className="bg-muted/50" />
+              <Input id="email" name="email" type="email" placeholder="name@example.com" required className="bg-muted/50" />
             </div>
             
             <div className="space-y-2">
@@ -52,11 +81,11 @@ export default function LoginPage() {
                   Forgot password?
                 </Link>
               </div>
-              <Input id="password" type="password" required className="bg-muted/50" />
+              <Input id="password" name="password" type="password" required className="bg-muted/50" />
             </div>
             
-            <Button type="submit" className="w-full h-11 text-base shadow-lg shadow-primary/20 mt-2">
-              Log In <ArrowRight className="ml-2 h-4 w-4" />
+            <Button type="submit" disabled={loading} className="w-full h-11 text-base shadow-lg shadow-primary/20 mt-2">
+              {loading ? "Logging in..." : <>Log In <ArrowRight className="ml-2 h-4 w-4" /></>}
             </Button>
           </form>
           

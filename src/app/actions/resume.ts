@@ -8,24 +8,17 @@ if (typeof global !== 'undefined' && typeof global.DOMMatrix === 'undefined') {
     a = 1; b = 0; c = 0; d = 1; e = 0; f = 0;
   };
 }
-const { PDFParse } = require('pdf-parse');
+const pdfParse = require('pdf-parse');
 
 export async function uploadAndAnalyzeResume(formData: FormData) {
   try {
     const supabase = await createClient();
     const { data: { user }, error: authError } = await supabase.auth.getUser();
 
-    let finalUserId = user?.id;
-    if (!finalUserId) {
-      // Mock login for testing since UI doesn't implement real auth yet
-      let dummyUser = await prisma.user.findFirst({ where: { email: 'dummy@example.com' } });
-      if (!dummyUser) {
-        dummyUser = await prisma.user.create({
-          data: { email: 'dummy@example.com', name: 'Test User' }
-        });
-      }
-      finalUserId = dummyUser.id;
+    if (!user?.id) {
+      throw new Error("Unauthorized");
     }
+    const finalUserId = user.id;
 
     const file = formData.get('file') as File;
     const jobTitle = formData.get('jobTitle') as string || 'General Role';
@@ -55,14 +48,11 @@ export async function uploadAndAnalyzeResume(formData: FormData) {
     let resumeText = '';
     if (file.type === 'application/pdf') {
       try {
-        const parser = new PDFParse({ data: buffer });
-        const pdfData = await parser.getText();
+        const pdfData = await pdfParse(buffer);
         resumeText = pdfData.text;
-        await parser.destroy();
       } catch (err) {
-        console.warn("PDF Parsing failed. Using raw buffer fallback.", err);
-        const rawText = buffer.toString('ascii').replace(/[^\x20-\x7E\n]/g, ' ');
-        resumeText = rawText.length > 50 ? rawText : "Dummy resume text for testing since PDF parsing failed.";
+        console.warn("PDF Parsing failed.", err);
+        throw new Error('Failed to parse the PDF file. Please ensure it is a valid PDF and try again.');
       }
     } else {
       // Basic text extraction fallback for other types (e.g., txt)
@@ -113,12 +103,10 @@ export async function uploadAndAnalyzeResume(formData: FormData) {
 export async function getUserResumes() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
-  let finalUserId = user?.id;
-  if (!finalUserId) {
-    const dummyUser = await prisma.user.findFirst({ where: { email: 'dummy@example.com' } });
-    if (!dummyUser) return [];
-    finalUserId = dummyUser.id;
+  if (!user?.id) {
+    return [];
   }
+  const finalUserId = user.id;
 
   return await prisma.resume.findMany({
     where: { userId: finalUserId },
@@ -130,12 +118,10 @@ export async function getUserResumes() {
 export async function deleteResume(id: string) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
-  let finalUserId = user?.id;
-  if (!finalUserId) {
-    const dummyUser = await prisma.user.findFirst({ where: { email: 'dummy@example.com' } });
-    if (dummyUser) finalUserId = dummyUser.id;
+  if (!user?.id) {
+    throw new Error("Unauthorized");
   }
-  if (!finalUserId) throw new Error("Unauthorized");
+  const finalUserId = user.id;
 
   const resume = await prisma.resume.findUnique({ where: { id } });
   if (!resume || resume.userId !== finalUserId) throw new Error("Not found or unauthorized");

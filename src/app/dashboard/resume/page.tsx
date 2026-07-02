@@ -17,6 +17,7 @@ export default function ResumeAnalyzer() {
   const [showResults, setShowResults] = useState(false);
   const [file, setFile] = useState<File | null>(null);
   const [analysis, setAnalysis] = useState<any>(null);
+  const [errorMsg, setErrorMsg] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -40,6 +41,7 @@ export default function ResumeAnalyzer() {
     }
     
     setIsAnalyzing(true);
+    setErrorMsg("");
     
     try {
       const form = e.target as HTMLFormElement;
@@ -57,11 +59,11 @@ export default function ResumeAnalyzer() {
         setAnalysis(result.resume.analyses[0]);
         setShowResults(true);
       } else {
-        alert("Failed to analyze resume: " + result.error);
+        setErrorMsg(result.error || "Failed to analyze resume");
       }
     } catch (error) {
       console.error(error);
-      alert("An unexpected error occurred.");
+      setErrorMsg("An unexpected error occurred.");
     } finally {
       setIsAnalyzing(false);
     }
@@ -137,6 +139,11 @@ export default function ResumeAnalyzer() {
                       required
                     />
                   </div>
+                  {errorMsg && (
+                    <div className="p-3 text-sm text-destructive bg-destructive/10 border border-destructive/20 rounded-md">
+                      {errorMsg}
+                    </div>
+                  )}
                   <Button type="submit" className="w-full h-12 text-lg shadow-[0_0_15px_rgba(var(--primary),0.3)]" disabled={isAnalyzing}>
                     {isAnalyzing ? (
                       <><Loader2 className="mr-2 h-5 w-5 animate-spin" /> Analyzing with AI...</>

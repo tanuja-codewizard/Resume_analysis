@@ -18,12 +18,10 @@ async function fetchMockJobs(query: string, location: string) {
 export async function getJobRecommendations(filters: { query?: string, location?: string } = {}) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
-  let finalUserId = user?.id;
-  if (!finalUserId) {
-    const dummyUser = await prisma.user.findFirst({ where: { email: 'dummy@example.com' } });
-    if (!dummyUser) return [];
-    finalUserId = dummyUser.id;
+  if (!user?.id) {
+    return [];
   }
+  const finalUserId = user.id;
 
   // Fetch candidate's latest resume analysis to get their skills
   const latestResume = await prisma.resume.findFirst({
@@ -71,12 +69,10 @@ export async function getJobRecommendations(filters: { query?: string, location?
 export async function getSavedJobs() {
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
-    let finalUserId = user?.id;
-    if (!finalUserId) {
-      const dummyUser = await prisma.user.findFirst({ where: { email: 'dummy@example.com' } });
-      if (!dummyUser) return [];
-      finalUserId = dummyUser.id;
+    if (!user?.id) {
+      return [];
     }
+    const finalUserId = user.id;
   
     return await prisma.jobRecommendation.findMany({
       where: { userId: finalUserId, isSaved: true },

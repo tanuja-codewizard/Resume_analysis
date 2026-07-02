@@ -2,6 +2,8 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useState } from "react";
+import { createClient } from "@/lib/supabase/client";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,9 +13,38 @@ import { Briefcase, ArrowRight, CheckCircle2 } from "lucide-react";
 export default function SignupPage() {
   const router = useRouter();
 
-  const handleSignup = (e: React.FormEvent) => {
+  const [errorMsg, setErrorMsg] = useState("");
+  const [loading, setLoading] = useState(false);
+  const supabase = createClient();
+
+  const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
-    router.push("/dashboard");
+    setLoading(true);
+    setErrorMsg("");
+    
+    const formData = new FormData(e.target as HTMLFormElement);
+    const email = formData.get("email") as string;
+    const password = formData.get("password") as string;
+    const firstName = formData.get("first-name") as string;
+    const lastName = formData.get("last-name") as string;
+    
+    const { error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        data: {
+          first_name: firstName,
+          last_name: lastName,
+        }
+      }
+    });
+    
+    if (error) {
+      setErrorMsg(error.message);
+      setLoading(false);
+    } else {
+      router.push("/dashboard");
+    }
   };
 
   return (
@@ -40,29 +71,35 @@ export default function SignupPage() {
           </div>
           
           <form className="space-y-4" onSubmit={handleSignup}>
+            {errorMsg && (
+              <div className="p-3 text-sm text-destructive bg-destructive/10 border border-destructive/20 rounded-md">
+                {errorMsg}
+              </div>
+            )}
+            
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="first-name">First name</Label>
-                <Input id="first-name" placeholder="John" required className="bg-muted/50" />
+                <Input id="first-name" name="first-name" placeholder="John" required className="bg-muted/50" />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="last-name">Last name</Label>
-                <Input id="last-name" placeholder="Doe" required className="bg-muted/50" />
+                <Input id="last-name" name="last-name" placeholder="Doe" required className="bg-muted/50" />
               </div>
             </div>
             
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
-              <Input id="email" type="email" placeholder="name@example.com" required className="bg-muted/50" />
+              <Input id="email" name="email" type="email" placeholder="name@example.com" required className="bg-muted/50" />
             </div>
             
             <div className="space-y-2">
               <Label htmlFor="password">Password</Label>
-              <Input id="password" type="password" required className="bg-muted/50" />
+              <Input id="password" name="password" type="password" required className="bg-muted/50" />
             </div>
             
-            <Button type="submit" className="w-full h-11 text-base shadow-lg shadow-primary/20 mt-4">
-              Create Account <ArrowRight className="ml-2 h-4 w-4" />
+            <Button type="submit" disabled={loading} className="w-full h-11 text-base shadow-lg shadow-primary/20 mt-4">
+              {loading ? "Creating..." : <>Create Account <ArrowRight className="ml-2 h-4 w-4" /></>}
             </Button>
           </form>
           
