@@ -8,35 +8,59 @@ if (typeof global !== 'undefined' && typeof global.DOMMatrix === 'undefined') {
     a = 1; b = 0; c = 0; d = 1; e = 0; f = 0;
   };
 }
-const pdfParse = require('pdf-parse');
+const { PDFParse } = require('pdf-parse');
 
 export async function uploadAndAnalyzeResume(formData: FormData) {
   try {
     const supabase = await createClient();
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    const accessToken = formData.get('access_token') as string | null;
+    let user;
+    let authError;
+
+    if (accessToken) {
+      const res = await supabase.auth.getUser(accessToken);
+      user = res.data.user;
+      authError = res.error;
+    } else {
+      const res = await supabase.auth.getUser();
+      user = res.data.user;
+      authError = res.error;
+    }
 
     if (!user?.id) {
+      console.log("getUser failed, trying getSession...");
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user) {
+        user = session.user;
+        authError = null;
+      }
+    }
+
+    if (!user?.id) {
+      console.error("Auth failed in resume action. User:", user, "Error:", authError);
       throw new Error("Unauthorized");
     }
     const finalUserId = user.id;
 
-    const file = formData.get('file') as File;
+    const fileBase64 = formData.get('fileBase64') as string;
+    const fileNameStr = formData.get('fileName') as string;
+    const fileType = formData.get('fileType') as string;
     const jobTitle = formData.get('jobTitle') as string || 'General Role';
     const jobDescription = formData.get('jobDescription') as string || 'General Requirements';
 
-    if (!file) {
+    if (!fileBase64) {
       throw new Error('No file uploaded');
     }
 
-    const buffer = Buffer.from(await file.arrayBuffer());
+    const buffer = Buffer.from(fileBase64, 'base64');
     
     // 1. Upload to Supabase Storage
-    const fileName = `${finalUserId}/${Date.now()}-${file.name.replace(/[^a-zA-Z0-9.-]/g, '_')}`;
+    const fileName = `${finalUserId}/${Date.now()}-${fileNameStr.replace(/[^a-zA-Z0-9.-]/g, '_')}`;
     let filePath = fileName;
     const { data: uploadData, error: uploadError } = await supabase.storage
       .from('resumes')
-      .upload(fileName, file, {
-        contentType: file.type,
+      .upload(fileName, buffer, {
+        contentType: fileType,
       });
 
     if (uploadError) {
@@ -46,13 +70,18 @@ export async function uploadAndAnalyzeResume(formData: FormData) {
     }
 
     let resumeText = '';
-    if (file.type === 'application/pdf') {
+    if (fileType === 'application/pdf') {
+      const header = buffer.subarray(0, 5).toString('utf-8');
+      if (header !== '%PDF-') {
+        throw new Error(`The uploaded file is not a valid PDF (Header: ${header}). If it's a Word document, please upload it as .docx or export it properly to PDF.`);
+      }
       try {
-        const pdfData = await pdfParse(buffer);
+        const parser = new PDFParse({ data: buffer });
+        const pdfData = await parser.getText();
         resumeText = pdfData.text;
-      } catch (err) {
-        console.warn("PDF Parsing failed.", err);
-        throw new Error('Failed to parse the PDF file. Please ensure it is a valid PDF and try again.');
+      } catch (err: any) {
+        console.warn(`PDF Parsing failed. Buffer size: ${buffer.length}. Error:`, err);
+        throw new Error(`Failed to parse PDF (${err.message || err}). Please try a different PDF file or a simpler format.`);
       }
     } else {
       // Basic text extraction fallback for other types (e.g., txt)
@@ -67,10 +96,20 @@ export async function uploadAndAnalyzeResume(formData: FormData) {
     const analysisResult = await analyzeResume(resumeText, jobTitle, jobDescription);
 
     // 4. Save to Database
+    // Ensure the user exists in Prisma DB (sync from Supabase Auth)
+    await prisma.user.upsert({
+      where: { id: finalUserId },
+      update: {},
+      create: {
+        id: finalUserId,
+        email: user.email || `user_${finalUserId}@example.com`,
+      }
+    });
+
     const resume = await prisma.resume.create({
       data: {
         userId: finalUserId,
-        fileName: file.name,
+        fileName: fileNameStr,
         filePath: filePath,
         analyses: {
           create: {

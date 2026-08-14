@@ -27,9 +27,14 @@ export async function middleware(request: NextRequest) {
     }
   )
 
-  const { data: { user } } = await supabase.auth.getUser()
+  const { data: { user }, error } = await supabase.auth.getUser()
+
+  console.log("Middleware URL:", request.url);
+  console.log("Middleware user:", user?.id, "Error:", error);
+  console.log("Middleware cookies:", request.cookies.getAll());
 
   if (!user && request.nextUrl.pathname.startsWith('/dashboard')) {
+    console.log("Middleware redirecting to login");
     return NextResponse.redirect(new URL('/login', request.url))
   }
 

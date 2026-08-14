@@ -4,7 +4,7 @@ import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { BrainCircuit, Mic, Square, Play, Settings2, User, Loader2 } from "lucide-react";
+import { BrainCircuit, Mic, Square, Play, Settings2, User, Loader2, Send } from "lucide-react";
 import { getInterviewQuestions } from "@/app/actions/interview";
 
 // Add TypeScript types for Web Speech API
@@ -23,7 +23,13 @@ export default function InterviewPrep() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [transcript, setTranscript] = useState("");
   const [dbQuestions, setDbQuestions] = useState<any[]>([]);
+  
+  const [textInput, setTextInput] = useState("");
+  const [hasSpeechSupport, setHasSpeechSupport] = useState(true);
+
   const recognitionRef = useRef<any>(null);
+  const transcriptRef = useRef("");
+  const isRecordingRef = useRef(false);
 
   useEffect(() => {
     async function fetchQuestions() {
@@ -52,43 +58,78 @@ export default function InterviewPrep() {
             currentTranscript += event.results[i][0].transcript;
           }
           setTranscript(currentTranscript);
+          transcriptRef.current = currentTranscript;
         };
 
         recognitionRef.current.onerror = (event: any) => {
-          console.error("Speech recognition error", event.error);
+          console.error("Speech recognition error:", event.error);
           setIsRecording(false);
+          isRecordingRef.current = false;
         };
+
+        recognitionRef.current.onend = () => {
+          setIsRecording(false);
+          if (isRecordingRef.current) {
+            isRecordingRef.current = false;
+            if (transcriptRef.current.trim()) {
+              handleAudioSubmit(transcriptRef.current);
+            }
+          }
+        };
+      } else {
+        setHasSpeechSupport(false);
       }
     }
   }, []);
 
   const toggleRecording = () => {
     if (isRecording) {
-      setIsRecording(false);
+      isRecordingRef.current = true;
       recognitionRef.current?.stop();
-      handleAudioSubmit(transcript);
     } else {
       if (!recognitionRef.current) {
-        alert("Your browser does not support Speech Recognition. Please try using Google Chrome.");
+        setHasSpeechSupport(false);
         return;
       }
       setTranscript("");
+      transcriptRef.current = "";
       setIsRecording(true);
+      isRecordingRef.current = true;
       try {
         recognitionRef.current.start();
       } catch (e) {
-        console.error(e);
+        console.error("Failed to start recording:", e);
+        setIsRecording(false);
+        isRecordingRef.current = false;
       }
     }
   };
 
-  const handleAudioSubmit = (finalTranscript: string) => {
+  const handleManualSubmit = (e?: React.FormEvent) => {
+    e?.preventDefault();
+    if (textInput.trim()) {
+      handleAudioSubmit(textInput);
+      setTextInput("");
+    }
+  };
+
+  const handleAudioSubmit = (finalText: string) => {
+    console.log("=== SENDING TO AI ===");
+    console.log("Captured Text:", finalText);
+    console.log("=====================");
+
+    const userMessage = finalText.trim();
+    if (!userMessage) {
+      console.warn("Attempted to send empty string to AI. Ignoring.");
+      return;
+    }
+
     setIsProcessing(true);
-    const userMessage = finalTranscript.trim() || "I am not sure, could you give me a hint?";
     
     // Add user message
     setMessages(prev => [...prev, { role: "user", content: userMessage }]);
     setTranscript("");
+    transcriptRef.current = "";
     
     // Simulate AI thinking and response based on user input
     setTimeout(() => {
@@ -164,32 +205,50 @@ export default function InterviewPrep() {
               </AnimatePresence>
             </div>
 
-            <div className="flex flex-col items-center justify-center pt-2">
-              <div className="relative">
-                {isRecording && (
-                  <motion.div 
-                    initial={{ scale: 0.8, opacity: 0 }}
-                    animate={{ scale: 1.5, opacity: 0 }}
-                    transition={{ repeat: Infinity, duration: 1.5 }}
-                    className="absolute inset-0 rounded-full bg-destructive/50"
+            <div className="flex flex-col items-center justify-center pt-2 space-y-4">
+              {hasSpeechSupport ? (
+                <>
+                  <div className="relative">
+                    {isRecording && (
+                      <motion.div 
+                        initial={{ scale: 0.8, opacity: 0 }}
+                        animate={{ scale: 1.5, opacity: 0 }}
+                        transition={{ repeat: Infinity, duration: 1.5 }}
+                        className="absolute inset-0 rounded-full bg-destructive/50"
+                      />
+                    )}
+                    <Button 
+                      size="lg" 
+                      onClick={toggleRecording}
+                      disabled={isProcessing}
+                      className={`relative rounded-full w-16 h-16 transition-all ${
+                        isRecording 
+                          ? "shadow-[0_0_30px_rgba(var(--destructive),0.6)] bg-destructive hover:bg-destructive/90 text-destructive-foreground" 
+                          : "shadow-[0_0_20px_rgba(var(--primary),0.3)] bg-primary hover:bg-primary/90 text-primary-foreground"
+                      }`}
+                    >
+                      {isRecording ? <Square className="w-6 h-6 fill-current" /> : <Mic className="w-6 h-6" />}
+                    </Button>
+                  </div>
+                  <p className="text-center text-sm text-muted-foreground h-5">
+                    {isRecording ? "Recording... Click to stop" : isProcessing ? "Please wait..." : "Click to start recording your answer"}
+                  </p>
+                </>
+              ) : (
+                <form onSubmit={handleManualSubmit} className="w-full flex gap-2">
+                  <input
+                    type="text"
+                    value={textInput}
+                    onChange={(e) => setTextInput(e.target.value)}
+                    placeholder="Type your answer here..."
+                    className="flex-1 bg-background border border-input rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                    disabled={isProcessing}
                   />
-                )}
-                <Button 
-                  size="lg" 
-                  onClick={toggleRecording}
-                  disabled={isProcessing}
-                  className={`relative rounded-full w-16 h-16 transition-all ${
-                    isRecording 
-                      ? "shadow-[0_0_30px_rgba(var(--destructive),0.6)] bg-destructive hover:bg-destructive/90 text-destructive-foreground" 
-                      : "shadow-[0_0_20px_rgba(var(--primary),0.3)] bg-primary hover:bg-primary/90 text-primary-foreground"
-                  }`}
-                >
-                  {isRecording ? <Square className="w-6 h-6 fill-current" /> : <Mic className="w-6 h-6" />}
-                </Button>
-              </div>
-              <p className="text-center text-sm text-muted-foreground mt-4 h-5">
-                {isRecording ? "Recording... Click to stop" : isProcessing ? "Please wait..." : "Click to start recording your answer"}
-              </p>
+                  <Button type="submit" disabled={isProcessing || !textInput.trim()}>
+                    <Send className="w-4 h-4" />
+                  </Button>
+                </form>
+              )}
             </div>
           </CardContent>
         </Card>

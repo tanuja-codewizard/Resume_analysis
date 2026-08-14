@@ -2,7 +2,8 @@
 
 import { motion } from "framer-motion";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import { ArrowRight, MapPin, Clock } from "lucide-react";
 import Link from "next/link";
 
@@ -45,9 +46,9 @@ export default function CareersPage() {
             <p className="text-xl text-muted-foreground leading-relaxed mb-8 max-w-2xl mx-auto">
               Join a fast-growing, passionate team dedicated to changing how people navigate their careers. We're remote-first, transparent, and obsessed with our users.
             </p>
-            <Button size="lg" className="h-12 px-8 text-base shadow-lg shadow-primary/20" asChild>
-              <Link href="#open-roles">View Open Roles</Link>
-            </Button>
+            <Link href="#open-roles" className={cn(buttonVariants({ size: "lg" }), "h-12 px-8 text-base shadow-lg shadow-primary/20")}>
+              View Open Roles
+            </Link>
           </motion.div>
         </div>
       </section>

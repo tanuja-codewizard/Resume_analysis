@@ -3,14 +3,16 @@
 import { useState, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { CircularProgress } from "@/components/ui/circular-progress";
 import { UploadCloud, FileText, CheckCircle2, AlertCircle, Loader2, Sparkles, BrainCircuit, Target, Lightbulb } from "lucide-react";
 import { uploadAndAnalyzeResume } from "@/app/actions/resume";
-
+import Link from "next/link";
+import { createClient } from "@/lib/supabase/client";
 
 export default function ResumeAnalyzer() {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
@@ -48,10 +50,29 @@ export default function ResumeAnalyzer() {
       const jobTitle = (form.elements.namedItem('jobTitle') as HTMLInputElement)?.value;
       const jobDescription = (form.elements.namedItem('jobDescription') as HTMLTextAreaElement)?.value;
       
+      const getBase64 = (f: File): Promise<string> => {
+        return new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.readAsDataURL(f);
+          reader.onload = () => resolve((reader.result as string).split(',')[1]);
+          reader.onerror = error => reject(error);
+        });
+      };
+      
+      const fileBase64 = await getBase64(file);
+      
       const formData = new FormData();
-      formData.append('file', file);
+      formData.append('fileBase64', fileBase64);
+      formData.append('fileName', file.name);
+      formData.append('fileType', file.type);
       if (jobTitle) formData.append('jobTitle', jobTitle);
       if (jobDescription) formData.append('jobDescription', jobDescription);
+      
+      const supabase = createClient();
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.access_token) {
+        formData.append('access_token', session.access_token);
+      }
       
       const result = await uploadAndAnalyzeResume(formData);
       
@@ -286,7 +307,9 @@ export default function ResumeAnalyzer() {
                       <div className="p-4 border border-border rounded-lg">
                         <p className="font-medium">3. How do you decide when to use Client Components vs Server Components?</p>
                       </div>
-                      <Button className="mt-4 w-full sm:w-auto">Practice in Simulator</Button>
+                      <Link href="/dashboard/interview" className={cn(buttonVariants({ variant: "default" }), "mt-4 w-full sm:w-auto")}>
+                        Practice in Simulator
+                      </Link>
                     </div>
                   </CardContent>
                 </Card>
