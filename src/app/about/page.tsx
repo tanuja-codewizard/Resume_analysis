@@ -46,7 +46,7 @@ export default function AboutPage() {
               <CardContent className="p-8 text-center">
                 <Users className="w-12 h-12 mx-auto text-primary mb-4" />
                 <h3 className="text-xl font-bold mb-2">Accessibility</h3>
-                <p className="text-muted-foreground">High-end career coaching shouldn't be a luxury. We make expert-level feedback accessible to everyone.</p>
+                <p className="text-muted-foreground">High-end career coaching shouldn&apos;t be a luxury. We make expert-level feedback accessible to everyone.</p>
               </CardContent>
             </Card>
           </div>
@@ -59,13 +59,13 @@ export default function AboutPage() {
           <h2 className="text-3xl font-bold mb-6">Our Story</h2>
           <div className="prose prose-stone dark:prose-invert max-w-none text-muted-foreground text-lg leading-relaxed space-y-6">
             <p>
-              CareerAI was born out of frustration. After seeing countless highly qualified candidates get rejected simply because their resumes weren't parsed correctly by legacy ATS systems, we knew something had to change.
+              CareerAI was born out of frustration. After seeing countless highly qualified candidates get rejected simply because their resumes weren&apos;t parsed correctly by legacy ATS systems, we knew something had to change.
             </p>
             <p>
-              What started as a simple script to test resume readability has evolved into a comprehensive suite of career acceleration tools. Today, we're proud to help thousands of professionals optimize their applications, ace their interviews, and negotiate better offers.
+              What started as a simple script to test resume readability has evolved into a comprehensive suite of career acceleration tools. Today, we&apos;re proud to help thousands of professionals optimize their applications, ace their interviews, and negotiate better offers.
             </p>
             <p>
-              We're a small, passionate team of engineers, recruiters, and AI researchers working remotely across the globe to build the future of hiring.
+              We&apos;re a small, passionate team of engineers, recruiters, and AI researchers working remotely across the globe to build the future of hiring.
             </p>
           </div>
         </div>

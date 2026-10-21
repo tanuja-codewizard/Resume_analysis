@@ -1,16 +1,17 @@
 'use server'
 
-import { createClient } from '@/lib/supabase/server';
 import prisma from '@/lib/prisma';
+import { getAuthenticatedUser } from '@/lib/supabase/sync-user';
+import { formatPercentageGrowth, formatAtsGrowth } from '@/lib/utils/formatters';
+
+export { formatPercentageGrowth, formatAtsGrowth };
 
 export async function getDashboardStats() {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  
-  if (!user?.id) {
+  const auth = await getAuthenticatedUser();
+  if (!auth) {
     return { success: false, error: 'Unauthorized' };
   }
-  const finalUserId = user.id;
+  const finalUserId = auth.dbUser.id;
 
   try {
     const now = new Date();
@@ -28,9 +29,7 @@ export async function getDashboardStats() {
       where: { userId: finalUserId, isApplied: true }
     });
 
-    const jobsGrowth = jobsAppliedLastMonth === 0 
-      ? (jobsAppliedThisMonth > 0 ? '+100%' : '--') 
-      : `+${Math.round(((jobsAppliedThisMonth - jobsAppliedLastMonth) / jobsAppliedLastMonth) * 100)}%`;
+    const jobsGrowth = formatPercentageGrowth(jobsAppliedThisMonth, jobsAppliedLastMonth);
 
     // 2. Interviews Prep (Completed Sessions)
     const interviewsThisMonth = await prisma.interviewQuestion.count({
@@ -43,9 +42,7 @@ export async function getDashboardStats() {
       where: { userId: finalUserId, isCompleted: true }
     });
 
-    const interviewsGrowth = interviewsLastMonth === 0 
-      ? (interviewsThisMonth > 0 ? '+100%' : '--') 
-      : `+${Math.round(((interviewsThisMonth - interviewsLastMonth) / interviewsLastMonth) * 100)}%`;
+    const interviewsGrowth = formatPercentageGrowth(interviewsThisMonth, interviewsLastMonth);
 
     // 3. Avg ATS Score
     const analysesThisMonth = await prisma.resumeAnalysis.findMany({
@@ -73,13 +70,7 @@ export async function getDashboardStats() {
       ? Math.round(analysesLastMonth.reduce((sum, a) => sum + (a.atsScore || 0), 0) / analysesLastMonth.length)
       : 0;
 
-    let atsGrowth = '--';
-    if (avgAtsLastMonth > 0) {
-      const diff = avgAtsThisMonth - avgAtsLastMonth;
-      atsGrowth = diff >= 0 ? `+${diff}%` : `${diff}%`;
-    } else if (avgAtsThisMonth > 0) {
-      atsGrowth = '+100%';
-    }
+    const atsGrowth = formatAtsGrowth(avgAtsThisMonth, avgAtsLastMonth);
 
     return {
       success: true,
@@ -96,3 +87,104 @@ export async function getDashboardStats() {
     return { success: false, error: "Failed to load stats" };
   }
 }
+
+export interface AnalysisHistoryItem {
+  id: string;
+  atsScore: number;
+  jobTitle: string;
+  fileName: string;
+  date: string;
+  strengths: string[];
+  missingSkills: string[];
+}
+
+export interface RoadmapMilestoneItem {
+  id: string;
+  title: string;
+  week: number;
+  completed: boolean;
+}
+
+export async function getCareerProgressData() {
+  const auth = await getAuthenticatedUser();
+  if (!auth) {
+    return { success: false, error: "Unauthorized" };
+  }
+  const userId = auth.dbUser.id;
+
+  try {
+    // 1. Resume analyses history
+    const analyses = await prisma.resumeAnalysis.findMany({
+      where: { resume: { userId } },
+      orderBy: { createdAt: 'desc' },
+      take: 6,
+      include: {
+        resume: {
+          select: { fileName: true }
+        }
+      }
+    });
+
+    const history: AnalysisHistoryItem[] = analyses.map((a) => ({
+      id: a.id,
+      atsScore: a.atsScore,
+      jobTitle: a.jobTitle || "General Role",
+      fileName: a.resume.fileName,
+      date: a.createdAt.toISOString(),
+      strengths: a.strengths || [],
+      missingSkills: a.missingSkills || []
+    }));
+
+    // 2. Genuine Roadmap Milestones
+    const latestRoadmap = await prisma.learningRoadmap.findFirst({
+      where: { userId },
+      orderBy: { createdAt: 'desc' }
+    });
+
+    const activeMilestones: RoadmapMilestoneItem[] = [];
+    let roadmapSummary: { targetRole: string; progress: number; id: string } | null = null;
+
+    if (latestRoadmap) {
+      roadmapSummary = {
+        id: latestRoadmap.id,
+        targetRole: latestRoadmap.targetRole,
+        progress: latestRoadmap.progress
+      };
+
+      const goals = latestRoadmap.weeklyGoals as {
+        weeks?: Array<{
+          week: number;
+          tasks?: Array<{ id: string; title: string; completed?: boolean }>;
+        }>;
+      };
+
+      if (goals && Array.isArray(goals.weeks)) {
+        for (const w of goals.weeks) {
+          if (Array.isArray(w.tasks)) {
+            for (const t of w.tasks) {
+              activeMilestones.push({
+                id: t.id,
+                title: t.title,
+                week: w.week,
+                completed: Boolean(t.completed)
+              });
+              if (activeMilestones.length >= 4) break;
+            }
+          }
+          if (activeMilestones.length >= 4) break;
+        }
+      }
+    }
+
+    return {
+      success: true,
+      history,
+      roadmapSummary,
+      activeMilestones
+    };
+  } catch (error) {
+    console.error("Failed to fetch career progress data", error);
+    return { success: false, error: "Failed to load career progress data" };
+  }
+}
+

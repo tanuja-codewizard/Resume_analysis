@@ -27,7 +27,7 @@ export default function ContactPage() {
               transition={{ delay: 0.1 }}
               className="text-xl text-muted-foreground"
             >
-              Have a question about our ATS scoring? Want to partner with us? We'd love to hear from you.
+              Have a question about our ATS scoring? Want to partner with us? We&apos;d love to hear from you.
             </motion.p>
           </div>
 
@@ -54,7 +54,7 @@ export default function ContactPage() {
               <CardContent className="pt-8 pb-8">
                 <MapPin className="w-10 h-10 mx-auto text-primary mb-4" />
                 <h3 className="font-bold text-lg mb-2">Office</h3>
-                <p className="text-muted-foreground mb-4">We're a remote-first company.</p>
+                <p className="text-muted-foreground mb-4">We&apos;re a remote-first company.</p>
                 <p className="text-foreground font-medium">San Francisco, CA (HQ)</p>
               </CardContent>
             </Card>
@@ -69,7 +69,7 @@ export default function ContactPage() {
             <Card className="bg-card/50 backdrop-blur-sm border-border/50 shadow-xl shadow-primary/5">
               <CardHeader>
                 <CardTitle>Send us a message</CardTitle>
-                <CardDescription>Fill out the form below and we'll get back to you within 24 hours.</CardDescription>
+                <CardDescription>Fill out the form below and we&apos;ll get back to you within 24 hours.</CardDescription>
               </CardHeader>
               <CardContent>
                 <form className="space-y-6" onSubmit={(e) => { e.preventDefault(); alert("Thanks for reaching out! We'll get back to you soon."); }}>

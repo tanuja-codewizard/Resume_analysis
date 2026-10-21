@@ -1,4 +1,4 @@
-import { createServerClient, type CookieOptions } from '@supabase/ssr'
+import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
 export async function middleware(request: NextRequest) {
@@ -29,9 +29,11 @@ export async function middleware(request: NextRequest) {
 
   const { data: { user }, error } = await supabase.auth.getUser()
 
-  console.log("Middleware URL:", request.url);
-  console.log("Middleware user:", user?.id, "Error:", error);
-  console.log("Middleware cookies:", request.cookies.getAll());
+  if (process.env.NODE_ENV !== 'production') {
+    if (error && request.nextUrl.pathname.startsWith('/dashboard')) {
+      console.warn("Middleware auth error for dashboard:", error.message);
+    }
+  }
 
   if (!user && request.nextUrl.pathname.startsWith('/dashboard')) {
     console.log("Middleware redirecting to login");

@@ -31,9 +31,10 @@ export default function ForgotPasswordPage() {
       }
 
       setIsSubmitted(true);
-    } catch (err: any) {
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "An error occurred. Please try again.";
       console.error("Forgot password error:", err);
-      setError(err.message || "An error occurred. Please try again.");
+      setError(message);
     } finally {
       setIsLoading(false);
     }
@@ -115,7 +116,7 @@ export default function ForgotPasswordPage() {
                 </div>
                 <h1 className="text-3xl font-bold tracking-tight">Check your email</h1>
                 <p className="text-muted-foreground text-lg leading-relaxed">
-                  If this email is registered, you'll receive a reset link shortly.
+                  If this email is registered, you&apos;ll receive a reset link shortly.
                 </p>
                 <div className="pt-4">
                   <Link href="/login">
@@ -142,7 +143,7 @@ export default function ForgotPasswordPage() {
         >
           <Quote className="h-12 w-12 text-primary/40 mb-6" />
           <blockquote className="text-2xl font-medium leading-relaxed mb-6">
-            "CareerAI helped me transition from a bootcamp grad to a Senior Frontend Engineer. The ATS scoring alone is worth its weight in gold."
+            &ldquo;CareerAI helped me transition from a bootcamp grad to a Senior Frontend Engineer. The ATS scoring alone is worth its weight in gold.&rdquo;
           </blockquote>
           <div className="flex items-center gap-4">
             <div className="h-12 w-12 rounded-full bg-primary/20 border border-primary/30 flex items-center justify-center font-bold text-primary">

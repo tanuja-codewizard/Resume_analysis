@@ -16,7 +16,7 @@ const categories = [
 const faqs = [
   { q: "How accurate is the ATS scoring?", a: "We use an enterprise-grade parsing engine similar to those used by Workday and Greenhouse to simulate how your resume is read. Our AI then maps your skills against the job description using vector similarity, achieving a highly accurate prediction." },
   { q: "Why did my resume score so low?", a: "Most low scores are caused by complex formatting (like columns or tables) that ATS systems cannot read. Try switching to a single-column, simple text format." },
-  { q: "Is my data used to train your AI?", a: "No. We transmit your resume data securely via API to OpenAI for analysis, and their enterprise policy strictly prohibits using our API data to train their foundational models." },
+  { q: "Is my data used to train your AI?", a: "No. We transmit your resume data securely via API to Google Gemini for analysis, and their enterprise terms strictly prohibit using API data to train foundational models." },
   { q: "Can I cancel my subscription anytime?", a: "Yes, you can downgrade to the free tier at any time from your billing dashboard. You will retain premium access until the end of your billing cycle." }
 ];
 

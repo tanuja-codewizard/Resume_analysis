@@ -48,7 +48,7 @@ export default function BlogPage() {
             </div>
             <h3 className="text-2xl font-bold mb-2">No articles found</h3>
             <p className="text-muted-foreground max-w-sm mx-auto mb-6">
-              We're currently preparing our first batch of expert career insights. Check back soon for in-depth articles.
+              We&apos;re currently preparing our first batch of expert career insights. Check back soon for in-depth articles.
             </p>
             <Button variant="outline">Clear Filters</Button>
           </div>

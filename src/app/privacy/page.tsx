@@ -35,9 +35,9 @@ export default function PrivacyPolicy() {
 
               <h2 className="text-2xl font-bold mt-8 mb-4 text-foreground">3. How We Process Your Resumes & AI Analysis</h2>
               <p className="text-muted-foreground mb-6 leading-relaxed">
-                CareerAI uses advanced Artificial Intelligence (via OpenAI) to analyze your resumes and job descriptions. When you upload a resume:
+                CareerAI uses advanced Artificial Intelligence (via Google Gemini) to analyze your resumes and job descriptions. When you upload a resume:
                 <br /><br />
-                We extract the text and securely transmit it to our AI providers strictly for the purpose of generating ATS scores, matching keywords, and providing feedback. We do not use your personal documents to train our own foundational AI models, nor do we allow our AI partners (like OpenAI) to use your data for training their models, in accordance with their enterprise API terms.
+                We extract the text and securely transmit it to our AI providers strictly for the purpose of generating ATS scores, matching keywords, and providing feedback. We do not use your personal documents to train our own foundational AI models, nor do we allow our AI partners to use your data for training their models, in accordance with their enterprise API terms.
               </p>
 
               <h2 className="text-2xl font-bold mt-8 mb-4 text-foreground">4. Data Security</h2>

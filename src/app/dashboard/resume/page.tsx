@@ -14,11 +14,19 @@ import { uploadAndAnalyzeResume } from "@/app/actions/resume";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 
+interface AnalysisData {
+  atsScore: number;
+  summary: string;
+  strengths: string[];
+  weaknesses: string[];
+  missingSkills: string[];
+}
+
 export default function ResumeAnalyzer() {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [showResults, setShowResults] = useState(false);
   const [file, setFile] = useState<File | null>(null);
-  const [analysis, setAnalysis] = useState<any>(null);
+  const [analysis, setAnalysis] = useState<AnalysisData | null>(null);
   const [errorMsg, setErrorMsg] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -199,7 +207,7 @@ export default function ResumeAnalyzer() {
               <TabsContent value="overview" className="grid gap-6 md:grid-cols-3 mt-4">
                 <Card className="bg-card/50 backdrop-blur-md border-border md:col-span-1 flex flex-col items-center justify-center p-8 text-center">
                   <CircularProgress value={analysis?.atsScore || 0} size={180} strokeWidth={12} className="mb-6" />
-                  <h3 className="text-xl font-bold">{analysis?.atsScore >= 80 ? "Strong Match" : analysis?.atsScore >= 50 ? "Moderate Match" : "Needs Work"}</h3>
+                  <h3 className="text-xl font-bold">{(analysis?.atsScore ?? 0) >= 80 ? "Strong Match" : (analysis?.atsScore ?? 0) >= 50 ? "Moderate Match" : "Needs Work"}</h3>
                   <p className="text-sm text-muted-foreground mt-2">
                     {analysis?.summary || "Your resume has been analyzed. Check the detailed feedback."}
                   </p>
@@ -279,11 +287,11 @@ export default function ResumeAnalyzer() {
                     <div className="space-y-4">
                       <div className="p-4 bg-muted/50 rounded-lg border border-border">
                         <h4 className="font-bold text-foreground mb-2">1. Emphasize Performance Optimization</h4>
-                        <p className="text-sm text-muted-foreground">The JD mentions "high-traffic user interfaces" multiple times. Recruiters will look for terms like 'Lighthouse score', 'lazy loading', and 'memoization'. Make sure your bullet points reflect this.</p>
+                        <p className="text-sm text-muted-foreground">The JD mentions &quot;high-traffic user interfaces&quot; multiple times. Recruiters will look for terms like &apos;Lighthouse score&apos;, &apos;lazy loading&apos;, and &apos;memoization&apos;. Make sure your bullet points reflect this.</p>
                       </div>
                       <div className="p-4 bg-muted/50 rounded-lg border border-border">
-                        <h4 className="font-bold text-foreground mb-2">2. Leadership & Mentorship</h4>
-                        <p className="text-sm text-muted-foreground">For a senior role, they expect you to guide others. Add a bullet point about how you "mentored 3 junior developers" or "led technical design sessions".</p>
+                        <h4 className="font-bold text-foreground mb-2">2. Leadership &amp; Mentorship</h4>
+                        <p className="text-sm text-muted-foreground">For a senior role, they expect you to guide others. Add a bullet point about how you &quot;mentored 3 junior developers&quot; or &quot;led technical design sessions&quot;.</p>
                       </div>
                     </div>
                   </CardContent>

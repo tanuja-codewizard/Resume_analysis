@@ -2,7 +2,7 @@
 
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
-import { BookMarked, Download } from "lucide-react";
+import { BookMarked } from "lucide-react";
 
 export default function CareerGuidesPage() {
   return (
@@ -31,7 +31,7 @@ export default function CareerGuidesPage() {
           </div>
           <h2 className="text-3xl font-bold mb-4">New Guides Coming Soon</h2>
           <p className="text-xl text-muted-foreground mb-8 max-w-2xl mx-auto">
-            Our career experts are currently putting the finishing touches on our first comprehensive playbooks: "The 2024 Tech Resume Format" and "Cracking the Behavioral Interview".
+            Our career experts are currently putting the finishing touches on our first comprehensive playbooks: &ldquo;The 2024 Tech Resume Format&rdquo; and &ldquo;Cracking the Behavioral Interview&rdquo;.
           </p>
           
           <div className="max-w-md mx-auto bg-card border border-border/50 rounded-xl p-6 shadow-lg shadow-primary/5">

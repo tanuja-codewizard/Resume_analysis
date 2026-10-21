@@ -1,36 +1,96 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# AI Career & Resume Analyzer
+
+A full-stack career acceleration platform featuring AI-powered Applicant Tracking System (ATS) resume analysis, role-based interview question generation and answer evaluation, job application pipeline tracking, and 4-week structured learning roadmaps.
+
+Built with **Next.js 16 App Router**, **React 19**, **Google Gemini AI**, **Supabase Auth & Storage**, and **Prisma ORM with PostgreSQL**.
+
+---
+
+## AI Engine: Google Gemini Integration
+
+The platform uses Google Gemini via the official `@google/generative-ai` SDK (`src/lib/ai/gemini.ts`) for all server-side AI evaluations:
+
+- **ATS Resume Analysis**: Parses resume text against job descriptions, computes match scores (0-100), extracts matching and missing skills, and provides structured feedback.
+- **Interview Question Generator**: Generates 4 categories of questions (Technical, HR, Behavioral, Aptitude) tailored to candidate resume background and target job roles.
+- **Interview Answer Evaluator**: Grades answers with score bounds, strengths, mistakes, areas for improvement, and actionable feedback.
+- **Learning Roadmaps**: Generates 4-week milestone plans targeting specific missing skills.
+
+### Configuring Google Gemini
+
+1. Obtain a Gemini API key with free tier support from [Google AI Studio](https://aistudio.google.com/app/apikey).
+2. Configure the following server-only environment variables in `.env` or `.env.local`:
+
+```bash
+# Server-only API key (never expose to the browser or prefix with NEXT_PUBLIC_)
+GEMINI_API_KEY="AIzaSy..."
+
+# Configurable Gemini model (defaults to gemini-1.5-flash if unset)
+GEMINI_MODEL="gemini-1.5-flash"
+```
+
+### Supported Models
+
+| Model | Recommended Use | Free Tier Support |
+| :--- | :--- | :--- |
+| `gemini-1.5-flash` | **Default / Recommended**: Ultra-fast latency, 1M context, generous free-tier rate limits. | Yes (Google AI Studio) |
+| `gemini-1.5-pro` | High reasoning capability for complex, multifaceted resumes and senior technical roles. | Yes (Google AI Studio) |
+| `gemini-2.0-flash` | Next-generation multimodal architecture for cutting-edge response speed. | Yes (where available) |
+
+---
 
 ## Getting Started
 
-First, run the development server:
+### 1. Prerequisites
+- Node.js 20+
+- A Supabase project with PostgreSQL database and a private `resumes` Storage bucket.
+- A Google Gemini API key.
 
+### 2. Environment Setup
+Copy the template to your local environment file:
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+cp .env.example .env.local
+```
+Fill in your credentials according to `.env.example`.
+
+### 3. Install Dependencies & Generate Prisma Client
+```bash
+npm install
+npx prisma generate
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### 4. Run the Development Server
+```bash
+npm run dev
+```
+Open [http://localhost:3000](http://localhost:3000) to view the application.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+---
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Testing & Quality Assurance
 
-## Learn More
+Run the test suites:
 
-To learn more about Next.js, take a look at the following resources:
+```bash
+# Run unit and stability tests (offline, mocked AI parsers, data validation)
+npm test
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+# Run live service integration tests (verifies Supabase, PostgreSQL, Storage, and AI service)
+npm run test:integration
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+# Type check
+npx tsc --noEmit
 
-## Deploy on Vercel
+# Lint check
+npm run lint
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+# Production build verification
+npm run build
+```
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+---
+
+## Security & Architectural Constraints
+
+- **Server-Only AI Execution**: All Gemini API calls are strictly executed within server actions (`src/app/actions/*`) and backend libraries (`src/lib/ai/*`). The `GEMINI_API_KEY` is never leaked to the client bundle or sent in API responses.
+- **Input Bounding**: Prompts and user inputs are strictly sliced (resumes to 30,000 characters, descriptions to 10,000 characters) to mitigate token exhaustion and prompt injection.
+- **Strict Response Validation**: All AI responses are validated and clamped against TypeScript schemas without fabricating mock data when errors or quota limits are encountered.

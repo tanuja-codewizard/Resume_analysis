@@ -44,7 +44,7 @@ export default function CareersPage() {
           >
             <h1 className="text-4xl md:text-6xl font-bold tracking-tight mb-6">Build the Future of Work</h1>
             <p className="text-xl text-muted-foreground leading-relaxed mb-8 max-w-2xl mx-auto">
-              Join a fast-growing, passionate team dedicated to changing how people navigate their careers. We're remote-first, transparent, and obsessed with our users.
+              Join a fast-growing, passionate team dedicated to changing how people navigate their careers. We&apos;re remote-first, transparent, and obsessed with our users.
             </p>
             <Link href="#open-roles" className={cn(buttonVariants({ size: "lg" }), "h-12 px-8 text-base shadow-lg shadow-primary/20")}>
               View Open Roles
@@ -116,8 +116,8 @@ export default function CareersPage() {
           </div>
 
           <div className="mt-12 text-center p-8 bg-muted/30 rounded-2xl border border-border/50">
-            <h3 className="font-semibold text-lg mb-2">Don't see a fit?</h3>
-            <p className="text-muted-foreground mb-4">We're always looking for talented people. Send your resume to careers@careerai.example.com</p>
+            <h3 className="font-semibold text-lg mb-2">Don&apos;t see a fit?</h3>
+            <p className="text-muted-foreground mb-4">We&apos;re always looking for talented people. Send your resume to careers@careerai.example.com</p>
           </div>
         </div>
       </section>

@@ -45,7 +45,7 @@ export function Testimonials() {
             transition={{ delay: 0.1 }}
             className="text-muted-foreground text-lg"
           >
-            Don't just take our word for it. Here's what our community says.
+            Don&apos;t just take our word for it. Here&apos;s what our community says.
           </motion.p>
         </div>
 
@@ -64,7 +64,7 @@ export function Testimonials() {
                     <Star key={i} className="w-4 h-4 fill-current" />
                   ))}
                 </div>
-                <p className="text-foreground/80 mb-6 italic leading-relaxed">"{t.content}"</p>
+                <p className="text-foreground/80 mb-6 italic leading-relaxed">&ldquo;{t.content}&rdquo;</p>
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-sm">
                     {t.initials}

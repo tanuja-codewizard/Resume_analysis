@@ -19,7 +19,7 @@ export default function TermsOfService() {
             <CardContent className="p-8 md:p-12 prose prose-stone dark:prose-invert max-w-none">
               <h2 className="text-2xl font-bold mt-0 mb-4 text-foreground">1. Acceptance of Terms</h2>
               <p className="text-muted-foreground mb-6 leading-relaxed">
-                By accessing or using CareerAI ("the Service"), you agree to be bound by these Terms of Service. If you disagree with any part of the terms, then you may not access the Service.
+                By accessing or using CareerAI (&quot;the Service&quot;), you agree to be bound by these Terms of Service. If you disagree with any part of the terms, then you may not access the Service.
               </p>
 
               <h2 className="text-2xl font-bold mt-8 mb-4 text-foreground">2. Description of Service</h2>

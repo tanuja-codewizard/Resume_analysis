@@ -1,81 +1,212 @@
 'use server'
 
-import { createClient } from '@/lib/supabase/server';
 import prisma from '@/lib/prisma';
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import { getAuthenticatedUser } from '@/lib/supabase/sync-user';
+import type { JobPipelineStage } from '@/lib/utils/jobs';
 
-// Simple mock for a Job API to simulate real behavior until an API key is provided
-async function fetchMockJobs(query: string, location: string) {
-  // In a real scenario, this would be a fetch() call to JSearch, Adzuna, etc.
-  return [
-    { title: "Frontend Developer", company: "Tech Corp", location: "Remote", salary: "$100k-$130k", experience: "Mid-Level", description: "React, Next.js, TypeScript" },
-    { title: "Full Stack Engineer", company: "StartupInc", location: "New York, NY", salary: "$120k-$150k", experience: "Senior", description: "Node.js, React, PostgreSQL" },
-    { title: "UI/UX Designer", company: "Designify", location: "San Francisco, CA", salary: "$90k-$110k", experience: "Junior", description: "Figma, CSS, HTML" },
-    { title: "Backend Developer", company: "DataSystems", location: "Remote", salary: "$110k-$140k", experience: "Mid-Level", description: "Python, Django, AWS" }
-  ];
+// Archetype benchmark roles used for skills matching in the absence of a live job board provider
+const ARCHETYPE_ROLES = [
+  { 
+    title: "Frontend Developer", 
+    company: "Benchmark Tech Archetype", 
+    location: "Remote / Hybrid", 
+    salary: "$100k-$130k (Market Estimate)", 
+    experience: "Mid-Level", 
+    description: "React, Next.js, TypeScript" 
+  },
+  { 
+    title: "Full Stack Engineer", 
+    company: "Benchmark Tech Archetype", 
+    location: "Hybrid / On-site", 
+    salary: "$120k-$150k (Market Estimate)", 
+    experience: "Senior", 
+    description: "Node.js, React, PostgreSQL" 
+  },
+  { 
+    title: "UI/UX Designer", 
+    company: "Benchmark Tech Archetype", 
+    location: "Remote", 
+    salary: "$90k-$110k (Market Estimate)", 
+    experience: "Junior-Mid", 
+    description: "Figma, CSS, HTML" 
+  },
+  { 
+    title: "Backend Developer", 
+    company: "Benchmark Tech Archetype", 
+    location: "Remote", 
+    salary: "$110k-$140k (Market Estimate)", 
+    experience: "Mid-Level", 
+    description: "Python, Django, AWS, PostgreSQL" 
+  }
+];
+
+function extractCleanWhyRecommended(text: string): string {
+  return text.replace(/^\[Stage:(Interviewing|Offered)\]\s*/i, '');
 }
 
-export async function getJobRecommendations(filters: { query?: string, location?: string } = {}) {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user?.id) {
+/**
+ * Loads role recommendations and benchmarks without creating duplicate records.
+ * Preserves user's pipeline stage (Saved, Applied, Interviewing, Offered).
+ */
+export async function getJobRecommendations(filters: { query?: string; location?: string } = {}) {
+  const auth = await getAuthenticatedUser();
+  if (!auth) {
     return [];
   }
-  const finalUserId = user.id;
+  const finalUserId = auth.dbUser.id;
 
-  // Fetch candidate's latest resume analysis to get their skills
+  // 1. Fetch existing saved/tracked recommendations first
+  const existingJobs = await prisma.jobRecommendation.findMany({
+    where: { userId: finalUserId },
+    orderBy: { createdAt: 'desc' }
+  });
+
+  // If recommendations already exist and no specific filters are applied, return existing records
+  if (existingJobs.length > 0 && !filters.query && !filters.location) {
+    return existingJobs;
+  }
+
+  // Fetch candidate's latest resume analysis to compute skill match
   const latestResume = await prisma.resume.findFirst({
     where: { userId: finalUserId },
     orderBy: { createdAt: 'desc' },
-    include: { analyses: true }
+    include: { analyses: { orderBy: { createdAt: 'desc' }, take: 1 } }
   });
 
   const currentSkills = latestResume?.analyses[0]?.strengths || ["JavaScript", "HTML", "CSS"];
 
-  const jobs = await fetchMockJobs(filters.query || '', filters.location || '');
-
-  // Calculate Match Percentage using basic logic (or AI in production)
-  const recommendations = jobs.map(job => {
-    const jobDescSkills = job.description.split(', ').map(s => s.toLowerCase());
-    const matched = jobDescSkills.filter(js => currentSkills.map(cs => cs.toLowerCase()).includes(js));
-    const matchPercentage = Math.round((matched.length / Math.max(jobDescSkills.length, 1)) * 100);
-    const missingSkills = jobDescSkills.filter(js => !currentSkills.map(cs => cs.toLowerCase()).includes(js));
-
-    return {
-      userId: finalUserId,
-      title: job.title,
-      company: job.company,
-      location: job.location,
-      salary: job.salary,
-      experience: job.experience,
-      matchPercentage: matchPercentage > 0 ? matchPercentage : Math.floor(Math.random() * 50) + 20, // Random baseline if no direct match
-      missingSkills: missingSkills.length > 0 ? missingSkills : ["System Design"],
-      whyRecommended: `Matches ${matchPercentage}% of your profile skills.`,
-      isSaved: false,
-      isApplied: false
-    };
+  const candidateJobs = ARCHETYPE_ROLES.filter(j => {
+    const matchesQuery = !filters.query || j.title.toLowerCase().includes(filters.query.toLowerCase()) || j.description.toLowerCase().includes(filters.query.toLowerCase());
+    const matchesLoc = !filters.location || j.location.toLowerCase().includes(filters.location.toLowerCase());
+    return matchesQuery && matchesLoc;
   });
 
-  // Save to DB and return the inserted records (which contain IDs)
-  const createdJobs = [];
-  for (const rec of recommendations) {
-    const newJob = await prisma.jobRecommendation.create({ data: rec });
-    createdJobs.push(newJob);
+  // Existing keys to avoid creating duplicate (title, company)
+  const existingKeys = new Set(
+    existingJobs.map(j => `${j.title.toLowerCase().trim()}|${j.company.toLowerCase().trim()}`)
+  );
+
+  const newRecommendations = [];
+  for (const job of candidateJobs) {
+    const key = `${job.title.toLowerCase().trim()}|${job.company.toLowerCase().trim()}`;
+    if (!existingKeys.has(key)) {
+      const jobDescSkills = job.description.split(', ').map(s => s.toLowerCase());
+      const matched = jobDescSkills.filter(js => currentSkills.map(cs => cs.toLowerCase()).includes(js));
+      const matchPercentage = Math.round((matched.length / Math.max(jobDescSkills.length, 1)) * 100);
+      const missingSkills = jobDescSkills.filter(js => !currentSkills.map(cs => cs.toLowerCase()).includes(js));
+
+      newRecommendations.push({
+        userId: finalUserId,
+        title: job.title,
+        company: job.company,
+        location: job.location,
+        salary: job.salary,
+        experience: job.experience,
+        matchPercentage: matchPercentage > 0 ? matchPercentage : 65,
+        missingSkills: missingSkills.length > 0 ? missingSkills : ["System Design"],
+        whyRecommended: `Matches ${matchPercentage > 0 ? matchPercentage : 65}% of your profile skills.`,
+        isSaved: true,
+        isApplied: false
+      });
+    }
   }
 
-  return createdJobs;
+  if (newRecommendations.length > 0) {
+    await prisma.$transaction(
+      newRecommendations.map(rec => prisma.jobRecommendation.create({ data: rec }))
+    );
+  }
+
+  return await prisma.jobRecommendation.findMany({
+    where: { userId: finalUserId },
+    orderBy: { createdAt: 'desc' }
+  });
+}
+
+/**
+ * Persistently update pipeline stage (Saved, Applied, Interviewing, Offered)
+ */
+export async function updateJobStage(id: string, stage: JobPipelineStage) {
+  const auth = await getAuthenticatedUser();
+  if (!auth) return { success: false, error: 'Unauthorized' };
+
+  const existing = await prisma.jobRecommendation.findUnique({ where: { id } });
+  if (!existing || existing.userId !== auth.dbUser.id) {
+    return { success: false, error: 'Job not found or unauthorized' };
+  }
+
+  const cleanWhy = extractCleanWhyRecommended(existing.whyRecommended || '');
+
+  let newWhy = cleanWhy;
+  let isSaved = false;
+  let isApplied = false;
+
+  switch (stage) {
+    case 'Saved':
+      isSaved = true;
+      isApplied = false;
+      break;
+    case 'Applied':
+      isSaved = false;
+      isApplied = true;
+      break;
+    case 'Interviewing':
+      isSaved = false;
+      isApplied = true;
+      newWhy = `[Stage:Interviewing] ${cleanWhy}`;
+      break;
+    case 'Offered':
+      isSaved = false;
+      isApplied = true;
+      newWhy = `[Stage:Offered] ${cleanWhy}`;
+      break;
+  }
+
+  const updated = await prisma.jobRecommendation.update({
+    where: { id },
+    data: {
+      isSaved,
+      isApplied,
+      whyRecommended: newWhy
+    }
+  });
+
+  return { success: true, job: updated };
+}
+
+/**
+ * Update saved status with authenticated ownership enforcement
+ */
+export async function toggleSaveJob(id: string, isSaved: boolean) {
+  return await updateJobStage(id, isSaved ? 'Saved' : 'Applied');
+}
+
+/**
+ * Update applied status with authenticated ownership enforcement
+ */
+export async function toggleApplyJob(id: string, isApplied: boolean) {
+  return await updateJobStage(id, isApplied ? 'Applied' : 'Saved');
+}
+
+export async function deleteJobRecommendation(id: string) {
+  const auth = await getAuthenticatedUser();
+  if (!auth) return { success: false, error: 'Unauthorized' };
+
+  const existing = await prisma.jobRecommendation.findUnique({ where: { id } });
+  if (!existing || existing.userId !== auth.dbUser.id) {
+    return { success: false, error: 'Job not found or unauthorized' };
+  }
+
+  await prisma.jobRecommendation.delete({ where: { id } });
+  return { success: true };
 }
 
 export async function getSavedJobs() {
-    const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user?.id) {
-      return [];
-    }
-    const finalUserId = user.id;
-  
-    return await prisma.jobRecommendation.findMany({
-      where: { userId: finalUserId, isSaved: true },
-      orderBy: { createdAt: 'desc' }
-    });
+  const auth = await getAuthenticatedUser();
+  if (!auth) return [];
+
+  return await prisma.jobRecommendation.findMany({
+    where: { userId: auth.dbUser.id, isSaved: true },
+    orderBy: { createdAt: 'desc' }
+  });
 }

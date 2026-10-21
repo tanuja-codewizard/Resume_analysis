@@ -2,174 +2,211 @@
 
 import { createClient } from '@/lib/supabase/server';
 import prisma from '@/lib/prisma';
-import { analyzeResume } from '@/lib/ai/openai';
-if (typeof global !== 'undefined' && typeof global.DOMMatrix === 'undefined') {
-  (global as any).DOMMatrix = class DOMMatrix {
+import { getAuthenticatedUser } from '@/lib/supabase/sync-user';
+import { analyzeResume } from '@/lib/ai/gemini';
+
+if (typeof global !== 'undefined' && typeof (global as Record<string, unknown>).DOMMatrix === 'undefined') {
+  (global as Record<string, unknown>).DOMMatrix = class DOMMatrix {
     a = 1; b = 0; c = 0; d = 1; e = 0; f = 0;
   };
 }
+
+// eslint-disable-next-line @typescript-eslint/no-require-imports
 const { PDFParse } = require('pdf-parse');
 
 export async function uploadAndAnalyzeResume(formData: FormData) {
+  let uploadedFilePath: string | null = null;
+  const supabase = await createClient();
+
   try {
-    const supabase = await createClient();
     const accessToken = formData.get('access_token') as string | null;
-    let user;
-    let authError;
+    const auth = await getAuthenticatedUser(accessToken);
 
-    if (accessToken) {
-      const res = await supabase.auth.getUser(accessToken);
-      user = res.data.user;
-      authError = res.error;
-    } else {
-      const res = await supabase.auth.getUser();
-      user = res.data.user;
-      authError = res.error;
-    }
-
-    if (!user?.id) {
-      console.log("getUser failed, trying getSession...");
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session?.user) {
-        user = session.user;
-        authError = null;
-      }
-    }
-
-    if (!user?.id) {
-      console.error("Auth failed in resume action. User:", user, "Error:", authError);
+    if (!auth) {
       throw new Error("Unauthorized");
     }
-    const finalUserId = user.id;
+    const finalUserId = auth.dbUser.id;
 
     const fileBase64 = formData.get('fileBase64') as string;
     const fileNameStr = formData.get('fileName') as string;
     const fileType = formData.get('fileType') as string;
-    const jobTitle = formData.get('jobTitle') as string || 'General Role';
-    const jobDescription = formData.get('jobDescription') as string || 'General Requirements';
+    const jobTitle = (formData.get('jobTitle') as string) || 'General Role';
+    const jobDescription = (formData.get('jobDescription') as string) || 'General Requirements';
 
     if (!fileBase64) {
       throw new Error('No file uploaded');
     }
 
     const buffer = Buffer.from(fileBase64, 'base64');
-    
-    // 1. Upload to Supabase Storage
-    const fileName = `${finalUserId}/${Date.now()}-${fileNameStr.replace(/[^a-zA-Z0-9.-]/g, '_')}`;
-    let filePath = fileName;
-    const { data: uploadData, error: uploadError } = await supabase.storage
-      .from('resumes')
-      .upload(fileName, buffer, {
-        contentType: fileType,
-      });
 
-    if (uploadError) {
-      console.warn("Upload to Supabase failed (bucket likely missing). Proceeding without storing file physically.", uploadError);
-    } else if (uploadData) {
-      filePath = uploadData.path;
+    // Enforce 5MB upload limit to prevent resource exhaustion
+    if (buffer.length > 5 * 1024 * 1024) {
+      throw new Error('File exceeds the 5MB size limit. Please upload a smaller PDF or text file.');
     }
 
+    // 1. Validate and extract text before attempting storage upload
     let resumeText = '';
     if (fileType === 'application/pdf') {
       const header = buffer.subarray(0, 5).toString('utf-8');
       if (header !== '%PDF-') {
-        throw new Error(`The uploaded file is not a valid PDF (Header: ${header}). If it's a Word document, please upload it as .docx or export it properly to PDF.`);
+        throw new Error(`The uploaded file is not a valid PDF. If it's a Word document, please upload it as .docx or export it properly to PDF.`);
       }
       try {
         const parser = new PDFParse({ data: buffer });
         const pdfData = await parser.getText();
         resumeText = pdfData.text;
-      } catch (err: any) {
-        console.warn(`PDF Parsing failed. Buffer size: ${buffer.length}. Error:`, err);
-        throw new Error(`Failed to parse PDF (${err.message || err}). Please try a different PDF file or a simpler format.`);
+      } catch (err: unknown) {
+        const errMsg = err instanceof Error ? err.message : String(err);
+        console.warn(`PDF Parsing failed. Buffer size: ${buffer.length}. Error:`, errMsg);
+        throw new Error(`Failed to parse PDF (${errMsg}). Please try a different PDF file or a simpler format.`);
       }
     } else {
-      // Basic text extraction fallback for other types (e.g., txt)
       resumeText = buffer.toString('utf-8');
     }
 
     if (!resumeText || resumeText.trim() === '') {
-       throw new Error('Could not extract text from the resume');
+      throw new Error('Could not extract text from the resume');
     }
 
-    // 3. AI Analysis
-    const analysisResult = await analyzeResume(resumeText, jobTitle, jobDescription);
+    // 2. Upload to Supabase Storage with authenticated user ownership path
+    const sanitizedFileName = fileNameStr.replace(/[^a-zA-Z0-9.-]/g, '_');
+    const storagePath = `${finalUserId}/${Date.now()}-${sanitizedFileName}`;
+
+    const { data: uploadData, error: uploadError } = await supabase.storage
+      .from('resumes')
+      .upload(storagePath, buffer, {
+        contentType: fileType,
+        upsert: false,
+      });
+
+    if (uploadError || !uploadData) {
+      console.error("Storage upload failed:", uploadError?.message);
+      throw new Error(`Resume storage failed: ${uploadError?.message || 'Bucket unavailable'}. Please verify the 'resumes' storage bucket is created.`);
+    }
+
+    uploadedFilePath = uploadData.path;
+
+    // 3. AI Analysis (with safety handling)
+    let analysisResult;
+    try {
+      analysisResult = await analyzeResume(resumeText, jobTitle, jobDescription);
+    } catch (aiErr: unknown) {
+      // Compensating storage cleanup if analysis fails completely
+      if (uploadedFilePath) {
+        await supabase.storage.from('resumes').remove([uploadedFilePath]).catch(() => {});
+        uploadedFilePath = null;
+      }
+      throw aiErr;
+    }
 
     // 4. Save to Database
-    // Ensure the user exists in Prisma DB (sync from Supabase Auth)
-    await prisma.user.upsert({
-      where: { id: finalUserId },
-      update: {},
-      create: {
-        id: finalUserId,
-        email: user.email || `user_${finalUserId}@example.com`,
-      }
-    });
-
-    const resume = await prisma.resume.create({
-      data: {
-        userId: finalUserId,
-        fileName: fileNameStr,
-        filePath: filePath,
-        analyses: {
-          create: {
-            jobTitle: jobTitle,
-            atsScore: analysisResult.ats_score || 0,
-            summary: analysisResult.feedback || '',
-            strengths: analysisResult.matched_keywords || [],
-            weaknesses: analysisResult.missing_keywords || [],
-            missingSkills: analysisResult.missing_keywords || [],
-            grammarIssues: [],
-            formattingIssues: [],
-            keywordAnalysis: {},
-            industryMatchScore: analysisResult.ats_score || 0,
+    try {
+      const resume = await prisma.resume.create({
+        data: {
+          userId: finalUserId,
+          fileName: fileNameStr,
+          filePath: uploadedFilePath,
+          analyses: {
+            create: {
+              jobTitle: jobTitle,
+              atsScore: analysisResult.ats_score || 0,
+              summary: analysisResult.feedback || '',
+              strengths: analysisResult.matched_keywords || [],
+              weaknesses: analysisResult.missing_keywords || [],
+              missingSkills: analysisResult.missing_keywords || [],
+              grammarIssues: [],
+              formattingIssues: [],
+              keywordAnalysis: {},
+              industryMatchScore: analysisResult.ats_score || 0,
+            }
           }
+        },
+        include: {
+          analyses: true
         }
-      },
-      include: {
-        analyses: true
+      });
+
+      return { success: true, resume };
+    } catch (dbErr: unknown) {
+      // Compensating cleanup of uploaded file if database insert fails
+      if (uploadedFilePath) {
+        console.warn("Database insert failed. Executing compensating storage cleanup for:", uploadedFilePath);
+        await supabase.storage.from('resumes').remove([uploadedFilePath]).catch(() => {});
       }
-    });
+      throw dbErr;
+    }
 
-    return { success: true, resume };
-
-  } catch (error: any) {
-    console.error('Resume processing error:', error);
-    return { success: false, error: error.message };
+  } catch (error: unknown) {
+    const errorMsg = error instanceof Error ? error.message : 'An unexpected error occurred';
+    console.error('Resume processing error:', errorMsg);
+    return { success: false, error: errorMsg };
   }
 }
 
 export async function getUserResumes() {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user?.id) {
+  const auth = await getAuthenticatedUser();
+  if (!auth) {
     return [];
   }
-  const finalUserId = user.id;
 
   return await prisma.resume.findMany({
-    where: { userId: finalUserId },
+    where: { userId: auth.dbUser.id },
     include: { analyses: true },
     orderBy: { createdAt: 'desc' }
   });
 }
 
 export async function deleteResume(id: string) {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user?.id) {
-    throw new Error("Unauthorized");
+  const auth = await getAuthenticatedUser();
+  if (!auth) {
+    return { success: false, error: "Unauthorized" };
   }
-  const finalUserId = user.id;
+  const finalUserId = auth.dbUser.id;
 
   const resume = await prisma.resume.findUnique({ where: { id } });
-  if (!resume || resume.userId !== finalUserId) throw new Error("Not found or unauthorized");
+  if (!resume) {
+    return { success: false, error: "Resume not found" };
+  }
+  if (resume.userId !== finalUserId) {
+    return { success: false, error: "Forbidden: You do not own this resume" };
+  }
 
-  // Delete from storage
-  await supabase.storage.from('resumes').remove([resume.filePath]);
+  // Attempt storage file removal
+  const supabase = await createClient();
+  const { error: storageError } = await supabase.storage.from('resumes').remove([resume.filePath]);
+  if (storageError) {
+    console.warn(`Storage file removal notice: ${resume.filePath} could not be deleted from storage:`, storageError.message);
+  }
 
   // Delete from db (cascade deletes analysis)
   await prisma.resume.delete({ where: { id } });
 
   return { success: true };
 }
+
+export async function getResumeDownloadUrl(id: string) {
+  const auth = await getAuthenticatedUser();
+  if (!auth) {
+    return { success: false, error: "Unauthorized" };
+  }
+
+  const resume = await prisma.resume.findUnique({ where: { id } });
+  if (!resume) {
+    return { success: false, error: "Resume not found" };
+  }
+  if (resume.userId !== auth.dbUser.id) {
+    return { success: false, error: "Forbidden: You do not own this resume" };
+  }
+
+  const supabase = await createClient();
+  const { data, error } = await supabase.storage
+    .from('resumes')
+    .createSignedUrl(resume.filePath, 300); // 5-minute temporary link
+
+  if (error || !data?.signedUrl) {
+    return { success: false, error: error?.message || "Failed to generate secure download URL" };
+  }
+
+  return { success: true, url: data.signedUrl };
+}
+

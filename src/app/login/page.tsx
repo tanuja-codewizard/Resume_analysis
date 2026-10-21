@@ -90,7 +90,7 @@ export default function LoginPage() {
           </form>
           
           <div className="text-center text-sm text-muted-foreground">
-            Don't have an account?{" "}
+            Don&apos;t have an account?{" "}
             <Link href="/signup" className="text-primary font-semibold hover:underline">
               Sign up
             </Link>
@@ -110,7 +110,7 @@ export default function LoginPage() {
         >
           <Quote className="h-12 w-12 text-primary/40 mb-6" />
           <blockquote className="text-2xl font-medium leading-relaxed mb-6">
-            "CareerAI helped me transition from a bootcamp grad to a Senior Frontend Engineer. The ATS scoring alone is worth its weight in gold."
+            &ldquo;CareerAI helped me transition from a bootcamp grad to a Senior Frontend Engineer. The ATS scoring alone is worth its weight in gold.&rdquo;
           </blockquote>
           <div className="flex items-center gap-4">
             <div className="h-12 w-12 rounded-full bg-primary/20 border border-primary/30 flex items-center justify-center font-bold text-primary">

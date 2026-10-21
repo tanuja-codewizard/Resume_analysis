@@ -5,6 +5,7 @@ import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { ArrowRight, BrainCircuit, Loader2, CheckCircle2 } from "lucide-react";
 import Link from "next/link";
+import Image from "next/image";
 import { cn } from "@/lib/utils";
 
 export function Hero() {
@@ -90,7 +91,7 @@ export function Hero() {
               <div className="flex -space-x-2">
                 {[...Array(4)].map((_, i) => (
                   <div key={i} className="w-8 h-8 rounded-full border-2 border-background bg-muted flex items-center justify-center overflow-hidden">
-                    <img src={`https://i.pravatar.cc/100?img=${i + 10}`} alt="User" />
+                    <Image src={`https://i.pravatar.cc/100?img=${i + 10}`} alt="User avatar" width={32} height={32} unoptimized />
                   </div>
                 ))}
               </div>

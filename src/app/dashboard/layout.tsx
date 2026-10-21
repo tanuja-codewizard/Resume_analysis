@@ -9,6 +9,7 @@ import {
   FileText, 
   Target, 
   BrainCircuit, 
+  Compass,
   Settings,
   LogOut,
   ChevronRight
@@ -20,6 +21,7 @@ const sidebarNavItems = [
   { title: "Resume Analysis", href: "/dashboard/resume", icon: FileText },
   { title: "Job Matches", href: "/dashboard/jobs", icon: Target },
   { title: "Interview Prep", href: "/dashboard/interview", icon: BrainCircuit },
+  { title: "Learning Roadmap", href: "/dashboard/roadmap", icon: Compass },
   { title: "Settings", href: "/dashboard/settings", icon: Settings },
 ];
 

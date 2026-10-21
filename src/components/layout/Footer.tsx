@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Briefcase, Globe, Mail } from "lucide-react";
+import { Briefcase } from "lucide-react";
 
 export function Footer() {
   return (

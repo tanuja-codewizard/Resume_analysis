@@ -40,7 +40,7 @@ export function FAQ() {
             Frequently Asked Questions
           </h2>
           <p className="text-lg text-muted-foreground">
-            Everything you need to know about CareerAI. Can't find the answer you're looking for? Reach out to our support team.
+            Everything you need to know about CareerAI. Can&apos;t find the answer you&apos;re looking for? Reach out to our support team.
           </p>
         </div>
 
