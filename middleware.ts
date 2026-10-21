@@ -6,38 +6,54 @@ export async function middleware(request: NextRequest) {
     request,
   })
 
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        getAll() {
-          return request.cookies.getAll()
-        },
-        setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value))
-          supabaseResponse = NextResponse.next({
-            request,
-          })
-          cookiesToSet.forEach(({ name, value, options }) =>
-            supabaseResponse.cookies.set(name, value, options)
-          )
-        },
-      },
+  try {
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+    const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+
+    if (!supabaseUrl || !supabaseAnonKey) {
+      return supabaseResponse
     }
-  )
 
-  const { data: { user }, error } = await supabase.auth.getUser()
+    const supabase = createServerClient(
+      supabaseUrl,
+      supabaseAnonKey,
+      {
+        cookies: {
+          getAll() {
+            if (request.cookies && typeof request.cookies.getAll === 'function') {
+              return request.cookies.getAll()
+            }
+            const cookieHeader = request.headers?.get?.('cookie') || ''
+            return cookieHeader.split('; ').filter(Boolean).map(c => {
+              const [name, ...v] = c.split('=')
+              return { name: name.trim(), value: v.join('=') }
+            })
+          },
+          setAll(cookiesToSet) {
+            cookiesToSet.forEach(({ name, value }) => {
+              if (request.cookies && typeof request.cookies.set === 'function') {
+                request.cookies.set(name, value)
+              }
+            })
+            supabaseResponse = NextResponse.next({
+              request,
+            })
+            cookiesToSet.forEach(({ name, value, options }) =>
+              supabaseResponse.cookies.set(name, value, options)
+            )
+          },
+        },
+      }
+    )
 
-  if (process.env.NODE_ENV !== 'production') {
-    if (error && request.nextUrl.pathname.startsWith('/dashboard')) {
-      console.warn("Middleware auth error for dashboard:", error.message);
+    const { data: { user } } = await supabase.auth.getUser()
+
+    const pathname = request.nextUrl?.pathname || new URL(request.url).pathname
+    if (!user && pathname.startsWith('/dashboard')) {
+      return NextResponse.redirect(new URL('/login', request.url))
     }
-  }
-
-  if (!user && request.nextUrl.pathname.startsWith('/dashboard')) {
-    console.log("Middleware redirecting to login");
-    return NextResponse.redirect(new URL('/login', request.url))
+  } catch (err) {
+    console.error("Middleware safe fallback:", err)
   }
 
   return supabaseResponse
