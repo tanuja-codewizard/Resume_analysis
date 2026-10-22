@@ -5,14 +5,7 @@ import prisma from '@/lib/prisma';
 import { getAuthenticatedUser } from '@/lib/supabase/sync-user';
 import { analyzeResume } from '@/lib/ai/gemini';
 
-if (typeof global !== 'undefined' && typeof (global as Record<string, unknown>).DOMMatrix === 'undefined') {
-  (global as Record<string, unknown>).DOMMatrix = class DOMMatrix {
-    a = 1; b = 0; c = 0; d = 1; e = 0; f = 0;
-  };
-}
-
-// eslint-disable-next-line @typescript-eslint/no-require-imports
-const { PDFParse } = require('pdf-parse');
+import { extractTextFromPdf } from '@/lib/pdf/parser';
 
 export async function uploadAndAnalyzeResume(formData: FormData) {
   let uploadedFilePath: string | null = null;
@@ -47,19 +40,7 @@ export async function uploadAndAnalyzeResume(formData: FormData) {
     // 1. Validate and extract text before attempting storage upload
     let resumeText = '';
     if (fileType === 'application/pdf') {
-      const header = buffer.subarray(0, 5).toString('utf-8');
-      if (header !== '%PDF-') {
-        throw new Error(`The uploaded file is not a valid PDF. If it's a Word document, please upload it as .docx or export it properly to PDF.`);
-      }
-      try {
-        const parser = new PDFParse({ data: buffer });
-        const pdfData = await parser.getText();
-        resumeText = pdfData.text;
-      } catch (err: unknown) {
-        const errMsg = err instanceof Error ? err.message : String(err);
-        console.warn(`PDF Parsing failed. Buffer size: ${buffer.length}. Error:`, errMsg);
-        throw new Error(`Failed to parse PDF (${errMsg}). Please try a different PDF file or a simpler format.`);
-      }
+      resumeText = await extractTextFromPdf(buffer);
     } else {
       resumeText = buffer.toString('utf-8');
     }

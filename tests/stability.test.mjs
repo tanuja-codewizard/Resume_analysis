@@ -2,6 +2,7 @@ import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
 import { formatPercentageGrowth, formatAtsGrowth } from '../src/lib/utils/formatters.ts';
 import { parseJobStage } from '../src/lib/utils/jobs.ts';
+import { extractTextFromPdf } from '../src/lib/pdf/parser.ts';
 import {
   cleanJsonText,
   parseResumeAnalysis,
@@ -214,6 +215,87 @@ describe('File Upload Security & Magic Bytes Validation', () => {
     assert.throws(() => {
       validateUploadBuffer(largeBuffer, 'application/pdf');
     }, /exceeds the 5MB size limit/);
+  });
+});
+
+describe('PDF Text Extraction & Worker Safety', () => {
+  function createSyntheticPdf(text) {
+    const stream = `BT /F1 12 Tf 72 712 Td (${text}) Tj ET`;
+    const streamLength = stream.length;
+    
+    const content = `%PDF-1.4
+1 0 obj
+<< /Type /Catalog /Pages 2 0 R >>
+endobj
+2 0 obj
+<< /Type /Pages /Kids [3 0 R] /Count 1 >>
+endobj
+3 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 4 0 R /Resources << /Font << /F1 5 0 R >> >> >>
+endobj
+4 0 obj
+<< /Length ${streamLength} >>
+stream
+${stream}
+endstream
+endobj
+5 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>
+endobj
+xref
+0 6
+0000000000 65535 f 
+0000000009 00000 n 
+0000000058 00000 n 
+0000000115 00000 n 
+0000000244 00000 n 
+0000000330 00000 n 
+trailer
+<< /Size 6 /Root 1 0 R >>
+startxref
+412
+%%EOF`;
+
+    return Buffer.from(content, 'utf-8');
+  }
+
+  test('extracts text from valid synthetic PDF without worker path errors', async () => {
+    const sampleText = 'Jane Doe - Full Stack Developer - React Node TypeScript AWS';
+    const pdfBuffer = createSyntheticPdf(sampleText);
+    const extracted = await extractTextFromPdf(pdfBuffer);
+    assert.ok(extracted.includes('Jane Doe'), 'Should contain candidate name');
+    assert.ok(extracted.includes('Full Stack Developer'), 'Should contain job title');
+    assert.ok(extracted.includes('TypeScript'), 'Should contain skill keywords');
+  });
+
+  test('rejects empty buffer with clear error message', async () => {
+    const emptyBuffer = Buffer.alloc(0);
+    await assert.rejects(
+      async () => {
+        await extractTextFromPdf(emptyBuffer);
+      },
+      /PDF file is empty/
+    );
+  });
+
+  test('rejects non-PDF files missing PDF magic bytes', async () => {
+    const textBuffer = Buffer.from('Plain text file content without PDF header');
+    await assert.rejects(
+      async () => {
+        await extractTextFromPdf(textBuffer);
+      },
+      /not a valid PDF/
+    );
+  });
+
+  test('handles corrupted or truncated PDF safely with informative failure', async () => {
+    const corruptBuffer = Buffer.from('%PDF-1.4 [corrupted body that terminates unexpectedly');
+    await assert.rejects(
+      async () => {
+        await extractTextFromPdf(corruptBuffer);
+      },
+      /Failed to parse PDF/
+    );
   });
 });
 
@@ -687,6 +769,53 @@ describe('Gemini Quota vs Overload Classification & Retry-After Extraction', () 
     const quotaErr = new Error('[429 Too Many Requests] RESOURCE_EXHAUSTED quota exceeded');
     assert.equal(isServiceOverloaded(quotaErr), false);
     assert.equal(isQuotaOrRateLimited(quotaErr), true);
+  });
+});
+
+describe('PDF Extraction via unpdf', () => {
+  test('rejects empty or null buffer', async () => {
+    await assert.rejects(
+      () => extractTextFromPdf(Buffer.alloc(0)),
+      /PDF file is empty/
+    );
+  });
+
+  test('rejects non-PDF files without %PDF- header', async () => {
+    await assert.rejects(
+      () => extractTextFromPdf(Buffer.from('Hello world this is not a pdf')),
+      /The uploaded file is not a valid PDF/
+    );
+  });
+
+  test('successfully extracts text from valid PDF buffer', async () => {
+    const minimalPdf = `%PDF-1.4
+1 0 obj << /Type /Catalog /Pages 2 0 R >> endobj
+2 0 obj << /Type /Pages /Kids [3 0 R] /Count 1 >> endobj
+3 0 obj << /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 4 0 R /Resources << /Font << /F1 5 0 R >> >> >> endobj
+4 0 obj << /Length 44 >> stream
+BT
+/F1 24 Tf
+100 700 Td
+(Software Engineer Resume Text) Tj
+ET
+endstream
+endobj
+5 0 obj << /Type /Font /Subtype /Type1 /BaseFont /Helvetica >> endobj
+xref
+0 6
+0000000000 65535 f 
+0000000010 00000 n 
+0000000060 00000 n 
+0000000117 00000 n 
+0000000234 00000 n 
+0000000329 00000 n 
+trailer << /Size 6 /Root 1 0 R >>
+startxref
+408
+%%EOF`;
+
+    const text = await extractTextFromPdf(Buffer.from(minimalPdf));
+    assert.ok(text.includes('Software Engineer Resume Text'));
   });
 });
 
